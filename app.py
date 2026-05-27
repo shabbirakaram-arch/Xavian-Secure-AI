@@ -14,7 +14,7 @@ os.environ["GEMINI_SECRET_KEY"] = st.secrets["GEMINI_SECRET_KEY"]
 # Streamlit Page Config
 st.set_page_config(page_title="Xavian Secure AI", page_icon="🛡️", layout="centered")
 
-# --- PRO GEMINI-STYLE UI CSS ---
+# --- CLEAN GEMINI-STYLE UI CSS ---
 st.markdown("""
     <style>
     /* पूरे ऐप का बैकग्राउंड और फॉन्ट */
@@ -46,32 +46,15 @@ st.markdown("""
         height: 40px !important;
     }
     
-    /* अपलोड बटन्स का बड़ा बॉक्स छोटा और छिपाना (ताकि सिर्फ आइकॉन जैसा लगे) */
-    .css-1544g2n, .stFileUploader {
-        padding-top: 0px !important;
-        margin-bottom: 0px !important;
-    }
-    
-    /* कस्टम जेमिनी फ्लोटिंग बार सेटअप */
-    .gemini-bar-container {
-        background: #1e1f20;
-        border: 1px solid #444746;
-        border-radius: 28px;
-        padding: 10px 15px;
-        margin-bottom: 15px;
-    }
-    
-    .gemini-title {
-        color: #8ab4f8;
-        font-weight: bold;
-        font-size: 14px;
-        margin-bottom: 8px;
-    }
+    /* Streamlit के डिफ़ॉल्ट हेडर, फुटर और मेनू को पूरी तरह छिपाने के लिए */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
+# मुख्य टाइटल (अब स्क्रीन एकदम क्लीन रहेगी)
 st.title("🛡️ Xavian Secure AI")
-st.caption("Google Gemini संचालित सुरक्षित वेब असिस्टेंट")
 
 api_key = os.environ.get("GEMINI_SECRET_KEY")
 
@@ -90,32 +73,19 @@ else:
             if "image" in message:
                 st.image(message["image"], use_container_width=True)
 
-    # --- GEMINI INPUT TOOLBAR (नीचे चैट बार के ठीक ऊपर) ---
-    st.markdown('<div class="gemini-bar-container"><div class="gemini-title">✨ Gemini Smart Tools (+ 📸 🎙️)</div>', unsafe_allow_html=True)
-    
-    # 3 कॉलम्स में टूल्स को व्यवस्थित करना
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
+    # --- SIDEBAR (सारे टूल्स साइड में रहेंगे) ---
     uploaded_file = None
-    
-    with col1:
-        # प्लस आइकॉन और गैलरी/फाइल के लिए
-        doc_file = st.file_uploader("➕ Files/Gallery", type=["jpg", "jpeg", "png", "pdf", "txt"], key="gemini_plus")
-    with col2:
-        # कैमरा/लेंस आइकॉन के लिए
-        img_file = st.file_uploader("📸 Lens/Camera", type=["jpg", "jpeg", "png"], key="gemini_lens")
-    with col3:
-        # वॉइस असिस्टेंस के लिए गाइडेंस
-        voice_on = st.checkbox("🎙️ Mic Mode")
-        if voice_on:
-            st.info("💡 अपने कीबोर्ड का 🎙️ दबाकर बोलें!")
-            
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.sidebar:
+        st.markdown("### 🛠️ Media Tools")
+        st.caption("यहाँ से आप फोटो या फाइल्स अपलोड कर सकते हैं")
+        
+        doc_file = st.file_uploader("➕ Files / Gallery / Lens", type=["jpg", "jpeg", "png", "pdf", "txt"], key="sidebar_uploader")
+        
+        st.markdown("---")
+        st.markdown("🎙️ **Voice Input Guide:**\nअपने मोबाइल कीबोर्ड पर बने माइक (🎙️) आइकॉन को दबाकर बोलें, वह अपने आप यहाँ टाइप कर देगा।")
 
     # मीडिया हैंडलिंग
-    if img_file:
-        uploaded_file = img_file
-    elif doc_file:
+    if doc_file:
         uploaded_file = doc_file
 
     if uploaded_file and uploaded_file.type.startswith("image/"):
@@ -153,4 +123,3 @@ else:
                 
         st.session_state.messages.append({"role": "assistant", "content": full_response})
         st.rerun()
-        
