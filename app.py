@@ -23,10 +23,23 @@ st.markdown("""
         color: #e3e3e3;
     }
     
-    /* मोबाइल स्क्रीन पर टाइटल को एक लाइन में फिट करने के लिए रेस्पॉन्सिव फॉन्ट */
+    /* मोबाइल स्क्रीन पर टाइटल को एक line में फिट करने के लिए रेस्पॉन्सिव फॉन्ट */
     h1 {
         font-size: max(1.8rem, 4vw) !important;
         white-space: nowrap !important;
+    }
+    
+    /* चैट के अंदर आने वाले टेक्स्ट को एकदम साफ़ और सफेद दिखाने के लिए */
+    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] span {
+        color: #ffffff !important;
+        font-size: 16px !important;
+    }
+    
+    /* चैट ब्लॉक का बैकग्राउंड थोड़ा सा हल्का डार्क करना */
+    div[data-testid="stChatMessage"] {
+        background-color: #1e1f20 !important;
+        border-radius: 12px !important;
+        margin-bottom: 10px !important;
     }
     
     /* चैट इनपुट कंटेनर को जेमिनी जैसा राउंड और बैकग्राउंड देना */
@@ -38,9 +51,10 @@ st.markdown("""
         padding-right: 10px !important;
     }
     
-    /* इनपुट टेक्स्ट एरिया */
+    /* इनपुट टेक्स्ट एरिया के अंदर जो टाइप हो रहा है उसे बिल्कुल सफेद (White) करना */
     div[data-testid="stChatInput"] textarea {
-        color: #e3e3e3 !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important; /* मोबाइल ब्राउज़र फिक्स */
     }
     
     /* सेंड बटन को ब्लू और गोल करना */
@@ -129,4 +143,3 @@ else:
                 
         st.session_state.messages.append({"role": "assistant", "content": full_response})
         st.rerun()
-        
