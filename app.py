@@ -23,6 +23,12 @@ st.markdown("""
         color: #e3e3e3;
     }
     
+    /* मोबाइल स्क्रीन पर टाइटल को एक लाइन में फिट करने के लिए रेस्पॉन्सिव फॉन्ट */
+    h1 {
+        font-size: max(1.8rem, 4vw) !important;
+        white-space: nowrap !important;
+    }
+    
     /* चैट इनपुट कंटेनर को जेमिनी जैसा राउंड और बैकग्राउंड देना */
     div[data-testid="stChatInput"] {
         border: 1px solid #444746 !important;
@@ -53,7 +59,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# मुख्य टाइटल (अब स्क्रीन एकदम क्लीन रहेगी)
+# मुख्य टाइटल
 st.title("🛡️ Xavian Secure AI")
 
 api_key = os.environ.get("GEMINI_SECRET_KEY")
@@ -123,3 +129,4 @@ else:
                 
         st.session_state.messages.append({"role": "assistant", "content": full_response})
         st.rerun()
+        
