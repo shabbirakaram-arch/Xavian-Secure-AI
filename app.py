@@ -9,7 +9,7 @@ os.environ["PYTHONHTTPSVERIFY"] = "0"
 
 # 2. Secure Environment Configuration
 # Kripya apni NAYI API Key yahan niche quotes (" ") ke andar dalein:
-os.environ["GEMINI_SECRET_KEY"] = st.secrets ["AIzaSyD8g7uf1pAnrC4PpMo1BLyB9poT6OhkYUk"]
+os.environ["GEMINI_SECRET_KEY"] = st.secrets ["AIzaSyANgFusybtoj3mVuGno23R2DqaqmA67jHw"]
 
 # Streamlit Page Setup (Responsive for Mobile/Laptop)
 st.set_page_config(page_title="Xavian Secure AI", page_icon="🛡️", layout="centered")
