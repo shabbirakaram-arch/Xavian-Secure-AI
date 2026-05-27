@@ -46,7 +46,7 @@ else:
             message_placeholder.markdown("🤖 *Xavian soch raha hai...*")
             
             try:
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-2.5-flash')
                 response = model.generate_content(prompt)
                 full_response = response.text
                 message_placeholder.markdown(full_response)
