@@ -51,10 +51,17 @@ st.markdown("""
         padding-right: 10px !important;
     }
     
-    /* इनपुट टेक्स्ट एरिया के अंदर जो टाइप हो रहा है उसे बिल्कुल सफेद (White) करना */
+    /* इनपुट बॉक्स में टाइप होने वाले टेक्स्ट को मोबाइल और डेस्कटॉप दोनों पर 100% सफेद करने के लिए */
     div[data-testid="stChatInput"] textarea {
         color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important; /* मोबाइल ब्राउज़र फिक्स */
+        -webkit-text-fill-color: #ffffff !important;
+        font-weight: 500 !important;
+    }
+    
+    /*Placeholder टेक्स्ट (जो हल्का लिखा रहता है: Xavian Secure AI से कुछ भी पूछें...) उसे थोड़ा सा विज़िबल करना */
+    div[data-testid="stChatInput"] textarea::placeholder {
+        color: #aaa !important;
+        -webkit-text-fill-color: #aaa !important;
     }
     
     /* सेंड बटन को ब्लू और गोल करना */
