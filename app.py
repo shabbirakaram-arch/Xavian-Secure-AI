@@ -100,13 +100,15 @@ else:
             if "image" in message:
                 st.image(message["image"], use_container_width=True)
 
-            # --- CHAT INPUT & PHOTO UPLOADER (Main Screen Par Mobile Ke Liye) ---
-    
-    # 1. Photo Upload ka option seedhe screen par (Sidebar se bahar)
-    uploaded_file = st.file_uploader("📸 Koi photo upload karein (Optional):", type=["jpg", "jpeg", "png"])
-    
-    # 2. Chat Input Box
+            
+            # --- CHAT INPUT (Ise humne upar kar diya taaki chat bar pehle aaye) ---
     user_prompt = st.chat_input("Xavian Secure AI se kuch bhi पूछें...")
+    
+    # Photo Upload ka option ab niche aayega
+    uploaded_file = st.file_uploader("📸 Koi photo upload karein (Optional):", type=["jpg", "jpeg", "png"])
+
+    # 'doc_file' waale error ko khatam karne ke liye humne dono ko ek barabar kar diya
+    doc_file = uploaded_file 
 
     if user_prompt:
         # User ka message pehle screen par dikhana aur history mein save karna
@@ -116,8 +118,8 @@ else:
             
         # Agar user ne photo bhi upload ki hai toh use bhi chat mein dikhana aur save karna
         input_image = None
-        if uploaded_file:
-            input_image = Image.open(uploaded_file)
+        if doc_file: # Ab yahan error nahi aayega kyunki doc_file upar define ho chuka hai
+            input_image = Image.open(doc_file)
             st.session_state.messages[-1]["image"] = input_image
             st.image(input_image, use_container_width=True)
 
@@ -141,8 +143,7 @@ else:
                 
             except Exception as e:
                 message_placeholder.error(f"Kuch galti hui hai: {e}")
-                
-        
+
         doc_file = st.file_uploader("➕ Files / Gallery / Lens", type=["jpg", "jpeg", "png", "pdf", "txt"], key="sidebar_uploader")
         
         st.markdown("---")
