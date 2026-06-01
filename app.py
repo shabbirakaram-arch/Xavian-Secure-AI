@@ -100,11 +100,48 @@ else:
             if "image" in message:
                 st.image(message["image"], use_container_width=True)
 
-    # --- SIDEBAR (सारे टूल्स साइड में रहेंगे) ---
-    uploaded_file = None
-    with st.sidebar:
-        st.markdown("### 🛠️ Media Tools")
-        st.caption("यहाँ से आप फोटो या फाइल्स अपलोड कर सकते हैं")
+            # --- CHAT INPUT & PHOTO UPLOADER (Main Screen Par Mobile Ke Liye) ---
+    
+    # 1. Photo Upload ka option seedhe screen par (Sidebar se bahar)
+    uploaded_file = st.file_uploader("📸 Koi photo upload karein (Optional):", type=["jpg", "jpeg", "png"])
+    
+    # 2. Chat Input Box
+    user_prompt = st.chat_input("Xavian Secure AI se kuch bhi पूछें...")
+
+    if user_prompt:
+        # User ka message pehle screen par dikhana aur history mein save karna
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+            
+        # Agar user ne photo bhi upload ki hai toh use bhi chat mein dikhana aur save karna
+        input_image = None
+        if uploaded_file:
+            input_image = Image.open(uploaded_file)
+            st.session_state.messages[-1]["image"] = input_image
+            st.image(input_image, use_container_width=True)
+
+        # AI se jawab mangne ki taiyari
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty() # Dynamic text ke liye placeholder
+            
+            try:
+                # Agar photo hai toh Gemini 1.5 Flash ko text aur photo dono bhejenge
+                if input_image:
+                    response = model.generate_content([user_prompt, input_image])
+                else:
+                    # Agar sirf text hai
+                    response = model.generate_content(user_prompt)
+                
+                ai_response = response.text
+                message_placeholder.markdown(ai_response)
+                
+                # AI ka jawab history mein save karna
+                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                
+            except Exception as e:
+                message_placeholder.error(f"Kuch galti hui hai: {e}")
+                
         
         doc_file = st.file_uploader("➕ Files / Gallery / Lens", type=["jpg", "jpeg", "png", "pdf", "txt"], key="sidebar_uploader")
         
