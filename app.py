@@ -11,101 +11,125 @@ os.environ["PYTHONHTTPSVERIFY"] = "0"
 # Streamlit Page Config
 st.set_page_config(page_title="Xavian Secure AI", page_icon="🛡️", layout="centered")
 
-# --- GEMINI UI WITH INTEGRATED '+' UPLOAD BUTTON ---
+# --- COMPLETE GEMINI UI OVERHAUL (TRULY INTEGRATED + BUTTON) ---
 st.markdown("""
     <style>
-    /* पूरे ऐप का बैकग्राउंड */
+    /* ऐप बैकग्राउंड */
     .stApp {
         background-color: #131314;
         color: #e3e3e3;
+        margin-bottom: 120px; /* ताकि चैट मैसेजेस इनपुट बार के पीछे न छुपें */
     }
     
-    h1 {
-        font-size: max(1.8rem, 4vw) !important;
-    }
-    
-    /* चैट मैसेजेस की स्टाइलिंग */
-    div[data-testid="stChatMessage"] p {
-        color: #ffffff !important;
-        font-size: 16px !important;
-    }
+    /* चैट मैसेज बबल्स */
     div[data-testid="stChatMessage"] {
         background-color: #1e1f20 !important;
         border-radius: 12px !important;
         margin-bottom: 10px !important;
     }
+    div[data-testid="stChatMessage"] p {
+        color: #ffffff !important;
+        font-size: 16px !important;
+    }
 
-    /* --- GEMINI BAR HACK (Flex Container for Upload + Chat) --- */
-    /* इस कंटेनर की मदद से अपलोड बटन और चैट बॉक्स एक लाइन में आ जाते हैं */
-    .gemini-bar-container {
+    /* --- REAL GEMINI BOTTOM STICKY BAR --- */
+    .gemini-footer-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #131314;
+        padding: 20px 0 30px 0;
+        z-index: 99999;
+    }
+    
+    /* इनपुट बॉक्स और प्लस बटन को बांधने वाला असली कंटेनर */
+    .gemini-input-container {
+        max-width: 700px;
+        margin: 0 auto;
         display: flex;
         align-items: center;
-        gap: 10px;
         background-color: #1e1f20;
         border: 1px solid #444746;
         border-radius: 32px;
-        padding: 4px 14px;
-        margin-top: 10px;
+        padding: 6px 14px;
+        position: relative;
     }
 
-    /* Streamlit के इनपुट बॉक्स की अपनी बॉर्डर और बैकग्राउंड को हटाना ताकि वह हमारे कंटेनर में फिट हो सके */
-    div[data-testid="stChatInput"] {
-        border: none !important;
-        background-color: transparent !important;
-        padding: 0 !important;
+    /* 1. प्लस बटन (File Uploader Customization) */
+    .upload-zone {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        margin-right: 10px;
+    }
+    div[data-testid="stFileUploader"] {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        opacity: 0; /* असली ड्रैग-एंड-ड्रॉप को छुपा दिया */
+    }
+    /* नकली प्लस डिजाइन जो यूजर को दिखेगा */
+    .fake-plus-btn {
+        width: 36px;
+        height: 36px;
+        background-color: #2b2c2e;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #e3e3e3;
+        font-size: 24px;
+        font-weight: bold;
+        pointer-events: none; /* क्लिक असली उप्लोअदेर पर ही होगा */
+    }
+
+    /* 2. टेक्स्ट इनपुट (चैट बॉक्स) */
+    div[data-testid="stTextInput"] {
         flex-grow: 1;
     }
-    
-    div[data-testid="stChatInput"] textarea {
+    div[data-testid="stTextInput"] > div > div > input {
+        background-color: transparent !important;
+        border: none !important;
         color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
-    }
-
-    /* सेंड बटन को जेमिनी लुक देना */
-    button[data-testid="stChatInputSubmitButton"] {
-        background-color: #1a73e8 !important;
-        color: white !important;
-        border-radius: 50% !important;
-    }
-
-    /* फ़ाइल अपलोडर के डिफ़ॉल्ट टेक्स्ट और फालतू डिज़ाइन को छिपाना */
-    div[data-testid="stFileUploader"] section {
-        padding: 0 !important;
-        border: none !important;
-        background: transparent !important;
-    }
-    div[data-testid="stFileUploader"] section > input + div {
-        display: none !important; /* 'Drag and drop' टेक्स्ट छिपाने के लिए */
-    }
-
-    /* अपलोड बटन को गोल '+' आइकॉन में बदलना */
-    div[data-testid="stFileUploader"] button {
-        background-color: #2b2c2e !important;
-        color: #e3e3e3 !important;
-        border: none !important;
-        border-radius: 50% !important;
-        width: 38px !important;
-        height: 38px !important;
-        min-width: 38px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        font-size: 20px !important;
+        font-size: 16px !important;
         padding: 0 !important;
         box-shadow: none !important;
     }
-    
-    /* बटन के डिफ़ॉल्ट टेक्स्ट को '+' से बदल देना */
-    div[data-testid="stFileUploader"] button::before {
-        content: "+" !important;
-        font-size: 22px !important;
-        font-weight: bold !important;
-    }
-    div[data-testid="stFileUploader"] button span {
-        display: none !important; /* पुराने 'Browse files' टेक्स्ट को गायब करना */
+    /* डिफ़ॉल्ट लेबल को गायब करना */
+    div[data-testid="stTextInput"] label {
+        display: none !important;
     }
 
-    /* छुपे हुए फुटर एलिमेंट्स */
+    /* 3. सेंड बटन */
+    .send-zone {
+        margin-left: 10px;
+    }
+    .send-zone button {
+        background-color: #1a73e8 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 50% !important;
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 16px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* प्रिव्यू थंबनेल */
+    .preview-box {
+        max-width: 700px;
+        margin: -15px auto 10px auto;
+        padding: 0 10px;
+    }
+
+    /* डिफ़ॉल्ट चीजें छिपाएं */
     #MainMenu, footer, header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
@@ -128,75 +152,82 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # 1. चैट हिस्ट्री डिस्प्ले करना
+    # 1. चैट हिस्ट्री रेंडर करना
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if "image" in message and message["image"] is not None:
                 st.image(message["image"], use_container_width=True)
 
-    st.markdown("---")
-    
-    # 2. सिलेक्टेड फोटो का छोटा सा प्रिव्यू (यदि फोटो अपलोड की गई हो)
-    # इसे इनपुट बार के ठीक ऊपर रखा है ताकि यूजर को पता चले कि फोटो अटैच हो चुकी है
-    preview_placeholder = st.container()
+    # 2. सिलेक्टेड फोटो का प्रिव्यू दिखाना (इनपुट बार के ठीक ऊपर)
+    preview_container = st.container()
 
-    # Voice Input गाइड
-    st.markdown("🎙️ **Voice Input Guide:** अपने मोबाइल कीबोर्ड पर बने माइक (🎙️) आइकॉन को दबाकर बोलें।")
+    # Voice Guide
+    st.markdown("<br><br>🎙️ **Voice Input Guide:** अपने मोबाइल कीबोर्ड के माइक (🎙️) से बोलें।", unsafe_allow_html=True)
 
-    # 3. HTML Div कंटेनर की शुरुआत जो अपलोडर और इनपुट बॉक्स को एक साथ बांधेगा
-    st.markdown('<div class="gemini-bar-container">', unsafe_allow_html=True)
+    # --- 3. कस्टमाइज्ड जेमिनी बॉटम बार कंटेनर ---
+    st.markdown('<div class="gemini-footer-bar">', unsafe_allow_html=True)
+    st.markdown('<div class="gemini-input-container">', unsafe_allow_html=True)
     
-    # यहाँ हमारा '+' बटन (File Uploader) लोड होगा
-    uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+    # [A] प्लस बटन जोन
+    st.markdown('<div class="upload-zone">', unsafe_allow_html=True)
+    uploaded_file = st.file_uploader("uploader", type=["jpg", "jpeg", "png"], label_visibility="collapsed", key="gemini_upload")
+    st.markdown('<div class="fake-plus-btn">+</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    # यहाँ हमारा मुख्य चैट इनपुट बॉक्स लोड होगा
-    user_prompt = st.chat_input("Xavian Secure AI से कुछ भी पूछें...")
+    # [B] टेक्स्ट इनपुट जोन
+    # यहाँ हमने st.chat_input की जगह st.text_input का इस्तेमाल किया है
+    user_prompt = st.text_input("prompt_input", placeholder="Xavian Secure AI से कुछ भी पूछें...", label_visibility="collapsed", key="user_text")
     
-    st.markdown('</div>', unsafe_allow_html=True) # HTML Container बंद
+    # [C] सेंड बटन जोन
+    st.markdown('<div class="send-zone">', unsafe_allow_html=True)
+    submit_clicked = st.button("➔", key="send_btn")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True) # input container बंद
+    st.markdown('</div>', unsafe_allow_html=True) # footer bar बंद
 
-    # प्रिव्यू दिखाने का लॉजिक
+    # प्रिव्यू लॉजिक
     if uploaded_file:
-        with preview_placeholder:
+        with preview_container:
+            st.markdown('<div class="preview-box">', unsafe_allow_html=True)
             img_preview = Image.open(uploaded_file)
-            st.image(img_preview, caption="📎 फोटो भेजने के लिए तैयार है", width=100)
+            st.image(img_preview, caption="📎 तैयार है", width=80)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    # 4. चैट प्रोसेसिंग लॉजिक
-    if user_prompt:
-        user_msg = {"role": "user", "content": user_prompt, "image": None}
-        input_image = None
-        
-        if uploaded_file:
-            input_image = Image.open(uploaded_file)
-            user_msg["image"] = input_image
-        
-        st.session_state.messages.append(user_msg)
-        
-        # यूज़र का इनपुट तुरंत स्क्रीन पर रिफ्रेश करना
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-            if input_image:
-                st.image(input_image, use_container_width=True)
-                
-        # AI का रिस्पांस जनरेट करना
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            message_placeholder.markdown("🤖 *Xavian सोच रहा है...*")
+    # 4. सबमिट होने पर चैट प्रोसेसिंग (यूजर या तो एंटर दबाए या सेंड बटन पर क्लिक करे)
+    if (user_prompt and submit_clicked) or (user_prompt and st.session_state.user_text != ""):
+        # डुप्लीकेट ट्रिगर रोकने के लिए चेक
+        if "last_processed" not in st.session_state or st.session_state.last_processed != user_prompt:
+            st.session_state.last_processed = user_prompt
             
-            try:
-                if input_image:
-                    response = model.generate_content([user_prompt, input_image])
-                else:
-                    response = model.generate_content(user_prompt)
-                    
-                ai_response = response.text
-                message_placeholder.markdown(ai_response)
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+            user_msg = {"role": "user", "content": user_prompt, "image": None}
+            input_image = None
+            
+            if uploaded_file:
+                input_image = Image.open(uploaded_file)
+                user_msg["image"] = input_image
+            
+            st.session_state.messages.append(user_msg)
+            
+            # असिस्टेंट रिस्पांस
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                message_placeholder.markdown("🤖 *Xavian सोच रहा है...*")
                 
-            except Exception as e:
-                error_msg = f"❌ सिस्टम एरर: {str(e)}"
-                message_placeholder.error(error_msg)
-                st.session_state.messages.append({"role": "assistant", "content": error_msg})
-        
-        st.rerun()
-        
+                try:
+                    if input_image:
+                        response = model.generate_content([user_prompt, input_image])
+                    else:
+                        response = model.generate_content(user_prompt)
+                        
+                    ai_response = response.text
+                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                    
+                except Exception as e:
+                    error_msg = f"❌ एरर: {str(e)}"
+                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+            
+            # इनपुट साफ़ करने और यूआई रीलोड करने के लिए
+            st.rerun()
+            
