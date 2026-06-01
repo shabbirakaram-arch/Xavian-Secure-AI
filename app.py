@@ -101,48 +101,50 @@ else:
                 st.image(message["image"], use_container_width=True)
 
                 # === 1. CHAT HISTORY LOOP KE THEEK NICHE YAHAN SE PASTE KAREIN ===
-    st.markdown("---")
     
-    # 2. Photo Upload Box (Ise humne thoda chota kiya hai aur label gayab kiya hai)
-    uploaded_file = st.file_uploader("📸 Attach a photo (Optional):", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
-    
-    # Do-do chat box ke error se bachne ke liye doc_file ko connect kiya
-    doc_file = uploaded_file 
+                        # === CHAT HISTORY LOOP KE THEEK NICHE YAHAN SE PASTE KAREIN ===
+        st.markdown("---")
+        
+        # Photo Upload Box (Ab yeh else block ke andar sahi spacing par hai)
+        uploaded_file = st.file_uploader("📸 Attach a photo (Optional):", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+        
+        # Do-do chat box ke error se bachne ke liye doc_file ko connect kiya
+        doc_file = uploaded_file 
 
-    # 3. Akela aur Asli Chat Input Box
-    user_prompt = st.chat_input("Xavian Secure AI se kuch bhi poochein...")
+        # Akela aur Asli Chat Input Box
+        user_prompt = st.chat_input("Xavian Secure AI se kuch bhi poochein...")
 
-    # 4. CHAT LOGIC
-    if user_prompt:
-        # User message save aur show karna
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-            
-        # Image handle karna
-        input_image = None
-        if doc_file:
-            input_image = Image.open(doc_file)
-            st.session_state.messages[-1]["image"] = input_image
-            st.image(input_image, use_container_width=True)
+        # CHAT LOGIC
+        if user_prompt:
+            # User message save aur show karna
+            st.session_state.messages.append({"role": "user", "content": user_prompt})
+            with st.chat_message("user"):
+                st.markdown(user_prompt)
+                
+            # Image handle karna
+            input_image = None
+            if doc_file:
+                input_image = Image.open(doc_file)
+                st.session_state.messages[-1]["image"] = input_image
+                st.image(input_image, use_container_width=True)
 
-        # AI Jawab
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            
-            try:
-                if input_image:
-                    response = model.generate_content([user_prompt, input_image])
-                else:
-                    response = model.generate_content(user_prompt)
+            # AI Jawab
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
                 
-                ai_response = response.text
-                message_placeholder.markdown(ai_response)
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
-                
-            except Exception as e:
-                message_placeholder.error(f"Error aaya hai: {e}")
-                
+                try:
+                    if input_image:
+                        response = model.generate_content([user_prompt, input_image])
+                    else:
+                        response = model.generate_content(user_prompt)
+                    
+                    ai_response = response.text
+                    message_placeholder.markdown(ai_response)
+                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                    
+                except Exception as e:
+                    message_placeholder.error(f"Error aaya hai: {e}")
+
 
         doc_file = st.file_uploader("➕ Files / Gallery / Lens", type=["jpg", "jpeg", "png", "pdf", "txt"], key="sidebar_uploader")
         
