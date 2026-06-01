@@ -4,56 +4,45 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# 1. Network Fixes
+# 1. Network Fixes (SSL Errors se bachne ke liye)
 ssl._create_default_https_context = ssl._create_unverified_context
 os.environ["PYTHONHTTPSVERIFY"] = "0"
 
-# Streamlit Page Config
+# Streamlit Page Configuration
 st.set_page_config(page_title="Xavian Secure AI", page_icon="🛡️", layout="centered")
 
-# --- GEMINI UI WITH INTEGRATED '+' UPLOAD BUTTON ---
+# --- PERFECT GEMINI-STYLE UI CSS WITH OVERLAY PLUS BUTTON ---
 st.markdown("""
     <style>
-    /* पूरे ऐप का बैकग्राउंड */
+    /* Poore app ka background aur default text color */
     .stApp {
         background-color: #131314;
         color: #e3e3e3;
     }
     
+    /* Responsive Title */
     h1 {
         font-size: max(1.8rem, 4vw) !important;
     }
     
-    /* चैट मैसेजेस की स्टाइलिंग */
-    div[data-testid="stChatMessage"] p {
-        color: #ffffff !important;
-        font-size: 16px !important;
-    }
+    /* Chat bubbles ko Gemini Dark Theme jaisa look dena */
     div[data-testid="stChatMessage"] {
         background-color: #1e1f20 !important;
         border-radius: 12px !important;
         margin-bottom: 10px !important;
     }
-
-    /* --- GEMINI BAR HACK (Flex Container for Upload + Chat) --- */
-    /* इस कंटेनर की मदद से अपलोड बटन और चैट बॉक्स एक लाइन में आ जाते हैं */
-    .gemini-bar-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background-color: #1e1f20;
-        border: 1px solid #444746;
-        border-radius: 32px;
-        padding: 4px 14px;
-        margin-top: 10px;
+    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] span {
+        color: #ffffff !important;
+        font-size: 16px !important;
     }
-
-    /* Streamlit के इनपुट बॉक्स की अपनी बॉर्डर और बैकग्राउंड को हटाना ताकि वह हमारे कंटेनर में फिट हो सके */
+    
+    /* --- REAL CHAT INPUT OVERLAY HACK --- */
+    /* Streamlit ke default chat input ke andar left side me space banana */
     div[data-testid="stChatInput"] {
-        border: none !important;
-        background-color: transparent !important;
-        padding: 0 !important;
-        flex-grow: 1;
+        border: 1px solid #444746 !important;
+        border-radius: 32px !important;
+        background-color: #1e1f20 !important;
+        padding-left: 55px !important; /* Is space me hi '+' button float karega */
     }
     
     div[data-testid="stChatInput"] textarea {
@@ -61,24 +50,45 @@ st.markdown("""
         -webkit-text-fill-color: #ffffff !important;
     }
 
-    /* सेंड बटन को जेमिनी लुक देना */
+    /* Send arrow button ko right side me circular aur blue karna */
     button[data-testid="stChatInputSubmitButton"] {
         background-color: #1a73e8 !important;
         color: white !important;
         border-radius: 50% !important;
     }
 
-    /* फ़ाइल अपलोडर के डिफ़ॉल्ट टेक्स्ट और फालतू डिज़ाइन को छिपाना */
+    /* --- STABLE FIXED PLUS BUTTON CSS --- */
+    /* Upload div ko theek chat bar ke left side me overlay karna */
+    div[data-testid="stFileUploader"] {
+        position: fixed !important;
+        bottom: 23px !important; 
+        left: calc(50% - 325px) !important; 
+        width: 44px !important;
+        height: 44px !important;
+        z-index: 9999999 !important; /* Taki click karne par sidhe gallery khule */
+    }
+
+    /* Mobile screens ke liye overlay position ko auto-adjust karna */
+    @media (max-width: 768px) {
+        div[data-testid="stFileUploader"] {
+            left: 20px !important;
+            bottom: 21px !important;
+        }
+    }
+
+    /* File uploader ka default "Drag & Drop" aur borders hatana */
     div[data-testid="stFileUploader"] section {
         padding: 0 !important;
         border: none !important;
         background: transparent !important;
+        width: 44px !important;
+        height: 44px !important;
     }
     div[data-testid="stFileUploader"] section > input + div {
-        display: none !important; /* 'Drag and drop' टेक्स्ट छिपाने के लिए */
+        display: none !important;
     }
 
-    /* अपलोड बटन को गोल '+' आइकॉन में बदलना */
+    /* Default button ko ek gool '+' icon me badalna */
     div[data-testid="stFileUploader"] button {
         background-color: #2b2c2e !important;
         color: #e3e3e3 !important;
@@ -90,29 +100,33 @@ st.markdown("""
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        font-size: 20px !important;
-        padding: 0 !important;
-        box-shadow: none !important;
+        cursor: pointer !important;
+        pointer-events: auto !important;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.3) !important;
     }
-    
-    /* बटन के डिफ़ॉल्ट टेक्स्ट को '+' से बदल देना */
     div[data-testid="stFileUploader"] button::before {
         content: "+" !important;
         font-size: 22px !important;
         font-weight: bold !important;
     }
     div[data-testid="stFileUploader"] button span {
-        display: none !important; /* पुराने 'Browse files' टेक्स्ट को गायब करना */
+        display: none !important; /* Purane 'Browse files' text ko chupane ke liye */
     }
 
-    /* छुपे हुए फुटर एलिमेंट्स */
+    /* Image preview container margin adjustments */
+    .preview-wrapper-box {
+        margin-bottom: 15px;
+    }
+
+    /* Default Headers/Footers ko poori tarah hide rakhna */
     #MainMenu, footer, header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
+# Main App Title
 st.title("🛡️ Xavian Secure AI")
 
-# Secure Config Setup
+# Streamlit Secrets se API key check karna
 if "GEMINI_SECRET_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_SECRET_KEY"]
     os.environ["GEMINI_SECRET_KEY"] = api_key
@@ -121,67 +135,71 @@ else:
     api_key = None
 
 if not api_key:
-    st.error("❌ Error: Streamlit Secrets में API Key गायब है!")
+    st.error("❌ Error: Streamlit Secrets mein API Key गायब है!")
 else:
+    # Model initialize karna
     model = genai.GenerativeModel('gemini-2.5-flash')
     
+    # Session State Initialize karna chat history ke liye
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # 1. चैट हिस्ट्री डिस्प्ले करना
+    # 1. Chat History Render karna
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if "image" in message and message["image"] is not None:
                 st.image(message["image"], use_container_width=True)
 
-    st.markdown("---")
-    
-    # 2. सिलेक्टेड फोटो का छोटा सा प्रिव्यू (यदि फोटो अपलोड की गई हो)
-    # इसे इनपुट बार के ठीक ऊपर रखा है ताकि यूजर को पता चले कि फोटो अटैच हो चुकी है
-    preview_placeholder = st.container()
+    # 2. Floating Photo Preview Container (Chat bar ke theek upar)
+    preview_container = st.container()
 
-    # Voice Input गाइड
-    st.markdown("🎙️ **Voice Input Guide:** अपने मोबाइल कीबोर्ड पर बने माइक (🎙️) आइकॉन को दबाकर बोलें।")
+    # Voice Input Guide Line
+    st.markdown("🎙️ **Voice Input Guide:** Apne mobile keyboard ke mike (🎙️) icon ko daba kar bolein.")
 
-    # 3. HTML Div कंटेनर की शुरुआत जो अपलोडर और इनपुट बॉक्स को एक साथ बांधेगा
-    st.markdown('<div class="gemini-bar-container">', unsafe_allow_html=True)
-    
-    # यहाँ हमारा '+' बटन (File Uploader) लोड होगा
-    uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
-    
-    # यहाँ हमारा मुख्य चैट इनपुट बॉक्स लोड होगा
-    user_prompt = st.chat_input("Xavian Secure AI से कुछ भी पूछें...")
-    
-    st.markdown('</div>', unsafe_allow_html=True) # HTML Container बंद
+    # --- 3. NO-REFRESH FRAGMENT BASED PHOTO UPLOAD ZONE ---
+    # Is decorative function se photo upload hote hi poora webpage refresh nahi hoga, jisse keyboard automatic popup nahi hoga.
+    @st.fragment
+    def render_plus_button():
+        uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"], label_visibility="collapsed", key="gemini_stable_plus")
+        if uploaded_file:
+            # File ko background me session state me store kar lena taaki chat input ise use kar sake
+            st.session_state["active_upload_file"] = uploaded_file
 
-    # प्रिव्यू दिखाने का लॉजिक
-    if uploaded_file:
-        with preview_placeholder:
-            img_preview = Image.open(uploaded_file)
-            st.image(img_preview, caption="📎 फोटो भेजने के लिए तैयार है", width=100)
+    # Plus button render karna (CSS ise chat bar ke left me fit karegi)
+    render_plus_button()
 
-    # 4. चैट प्रोसेसिंग लॉजिक
-    if user_prompt:
+    # Agar photo successfully uploaded hai toh chat input ke upar uska preview dikhana
+    if "active_upload_file" in st.session_state and st.session_state["active_upload_file"] is not None:
+        with preview_container:
+            st.markdown('<div class="preview-wrapper-box">', unsafe_allow_html=True)
+            img_preview = Image.open(st.session_state["active_upload_file"])
+            st.image(img_preview, caption="📎 Photo भेजने ke liye taiyaar hai", width=100)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    # --- 4. CHAT INPUT AND MAIN LOGIC PROCESSING ---
+    if user_prompt := st.chat_input("Xavian Secure AI se kuch bhi poochein..."):
+        
+        # User message ka dictionary object banana
         user_msg = {"role": "user", "content": user_prompt, "image": None}
         input_image = None
         
-        if uploaded_file:
-            input_image = Image.open(uploaded_file)
+        # Agar session state me koi image uploaded padi hai toh use uthana
+        if "active_upload_file" in st.session_state and st.session_state["active_upload_file"] is not None:
+            input_image = Image.open(st.session_state["active_upload_file"])
             user_msg["image"] = input_image
         
+        # Screen par instant user response append aur display karna
         st.session_state.messages.append(user_msg)
-        
-        # यूज़र का इनपुट तुरंत स्क्रीन पर रिफ्रेश करना
         with st.chat_message("user"):
             st.markdown(user_prompt)
             if input_image:
                 st.image(input_image, use_container_width=True)
                 
-        # AI का रिस्पांस जनरेट करना
+        # Gemini API Request Call karna aur Assistant response dikhana
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            message_placeholder.markdown("🤖 *Xavian सोच रहा है...*")
+            message_placeholder.markdown("🤖 *Xavian soch raha hai...*")
             
             try:
                 if input_image:
@@ -194,9 +212,13 @@ else:
                 st.session_state.messages.append({"role": "assistant", "content": ai_response})
                 
             except Exception as e:
-                error_msg = f"❌ सिस्टम एरर: {str(e)}"
+                error_msg = f"❌ System Error aaya hai: {str(e)}"
                 message_placeholder.error(error_msg)
                 st.session_state.messages.append({"role": "assistant", "content": error_msg})
         
+        # Message send hone ke baad background se uploaded file ko saaf karna taaki agli chat fresh ho ske
+        if "active_upload_file" in st.session_state:
+            st.session_state["active_upload_file"] = None
+            
+        # UI refresh click clear karne ke liye
         st.rerun()
-        
