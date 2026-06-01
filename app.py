@@ -8,9 +8,6 @@ from PIL import Image
 ssl._create_default_https_context = ssl._create_unverified_context
 os.environ["PYTHONHTTPSVERIFY"] = "0"
 
-# 2. Secure Config
-os.environ["GEMINI_SECRET_KEY"] = st.secrets["GEMINI_SECRET_KEY"]
-
 # Streamlit Page Config
 st.set_page_config(page_title="Xavian Secure AI", page_icon="🛡️", layout="centered")
 
@@ -58,7 +55,7 @@ st.markdown("""
         font-weight: 500 !important;
     }
     
-    /*Placeholder टेक्स्ट (जो हल्का लिखा रहता है: Xavian Secure AI से कुछ भी पूछें...) उसे थोड़ा सा विज़िबल करना */
+    /* Placeholder टेक्स्ट को थोड़ा सा विज़िबल करना */
     div[data-testid="stChatInput"] textarea::placeholder {
         color: #aaa !important;
         -webkit-text-fill-color: #aaa !important;
@@ -83,109 +80,83 @@ st.markdown("""
 # मुख्य टाइटल
 st.title("🛡️ Xavian Secure AI")
 
-api_key = os.environ.get("GEMINI_SECRET_KEY")
+# Secure Config Setup
+if "GEMINI_SECRET_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_SECRET_KEY"]
+    os.environ["GEMINI_SECRET_KEY"] = api_key
+    genai.configure(api_key=api_key)
+else:
+    api_key = None
 
 if not api_key:
     st.error("❌ Error: Streamlit Secrets में API Key गायब है!")
 else:
-    genai.configure(api_key=api_key)
+    # Gemini Model Initialize करना
+    model = genai.GenerativeModel('gemini-2.5-flash')
     
+    # Session State Initialize करना
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # चैट हिस्ट्री दिखाना
+    # 1. पहले पुरानी चैट हिस्ट्री दिखाएं (बिना किसी इनपुट बॉक्स के)
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            if "image" in message:
+            if "image" in message and message["image"] is not None:
                 st.image(message["image"], use_container_width=True)
 
-                # === CHAT HISTORY LOOP KE THEEK NICHE YAHAN SE PASTE KAREIN ===
-        st.markdown("---")
-        
-        # Photo Upload Box (Ab yeh else block ke andar sahi spacing par hai)
-        uploaded_file = st.file_uploader("📸 Attach a photo (Optional):", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
-        
-        # Do-do chat box ke error se bachne ke liye doc_file ko connect kiya
-        doc_file = uploaded_file 
-
-        # Akela aur Asli Chat Input Box
-        user_prompt = st.chat_input("Xavian Secure AI se kuch bhi poochein...")
-
-        # CHAT LOGIC
-        if user_prompt:
-            # User message save aur show karna
-            st.session_state.messages.append({"role": "user", "content": user_prompt})
-            with st.chat_message("user"):
-                st.markdown(user_prompt)
-                
-            # Image handle karna
-            input_image = None
-            if doc_file:
-                input_image = Image.open(doc_file)
-                st.session_state.messages[-1]["image"] = input_image
-                st.image(input_image, use_container_width=True)
-
-            # AI Jawab
-            with st.chat_message("assistant"):
-                message_placeholder = st.empty()
-                
-                try:
-                    if input_image:
-                        response = model.generate_content([user_prompt, input_image])
-                    else:
-                        response = model.generate_content(user_prompt)
-                    
-                    ai_response = response.text
-                    message_placeholder.markdown(ai_response)
-                    st.session_state.messages.append({"role": "assistant", "content": ai_response})
-                    
-                except Exception as e:
-                    message_placeholder.error(f"Error aaya hai: {e}")
-                    
-
-
-        doc_file = st.file_uploader("➕ Files / Gallery / Lens", type=["jpg", "jpeg", "png", "pdf", "txt"], key="sidebar_uploader")
-        
-        st.markdown("---")
-        st.markdown("🎙️ **Voice Input Guide:**\nअपने मोबाइल कीबोर्ड पर बने माइक (🎙️) आइकॉन को दबाकर बोलें, वह अपने आप यहाँ टाइप कर देगा।")
-
-    # मीडिया हैंडलिंग
-    if doc_file:
-        uploaded_file = doc_file
-
-    if uploaded_file and uploaded_file.type.startswith("image/"):
+    st.markdown("---")
+    
+    # 2. फ़ोटो अपलोड सेक्शन (चैट के नीचे एक ही बार दिखेगा)
+    uploaded_file = st.file_uploader("📸 Attach a photo (Optional):", type=["jpg", "jpeg", "png"])
+    
+    if uploaded_file:
         preview_img = Image.open(uploaded_file)
-        st.image(preview_img, caption="📎 सिलेक्टेड फोटो भेजने के लिए तैयार है", width=120)
+        st.image(preview_img, caption="📎 सिलेक्टेड फोटो भेजने के लिए तैयार है", width=150)
 
-    # मुख्य इनपुट बॉक्स
-    if prompt := st.chat_input("Xavian Secure AI से कुछ भी पूछें..."):
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    st.markdown("🎙️ **Voice Input Guide:** अपने मोबाइल कीबोर्ड पर बने माइक (🎙️) आइकॉन को दबाकर बोलें।")
+
+    # 3. अकेला और असली चैट इनपुट बॉक्स
+    if user_prompt := st.chat_input("Xavian Secure AI से कुछ भी पूछें..."):
         
-        user_msg = {"role": "user", "content": prompt}
-        if uploaded_file and uploaded_file.type.startswith("image/"):
-            user_msg["image"] = Image.open(uploaded_file)
-            
+        # User का मैसेज ऑब्जेक्ट तैयार करना
+        user_msg = {"role": "user", "content": user_prompt, "image": None}
+        
+        # अगर इमेज अपलोडेड है तो उसे सेव करना
+        input_image = None
+        if uploaded_file:
+            input_image = Image.open(uploaded_file)
+            user_msg["image"] = input_image
+        
+        # स्क्रीन पर यूजर का मैसेज तुरंत दिखाना
         st.session_state.messages.append(user_msg)
-
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+            if input_image:
+                st.image(input_image, use_container_width=True)
+                
+        # Assistant (AI) का जवाब जनरेट करना
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             message_placeholder.markdown("🤖 *Xavian सोच रहा है...*")
             
             try:
-                model = genai.GenerativeModel('gemini-2.5-flash')
-                if uploaded_file and uploaded_file.type.startswith("image/"):
-                    img_data = Image.open(uploaded_file)
-                    response = model.generate_content([prompt, img_data])
+                if input_image:
+                    response = model.generate_content([user_prompt, input_image])
                 else:
-                    response = model.generate_content(prompt)
+                    response = model.generate_content(user_prompt)
                     
-                full_response = response.text
-                message_placeholder.markdown(full_response)
-            except Exception as e:
-                full_response = f"❌ सिस्टम एरर: {str(e)}"
-                message_placeholder.markdown(full_response)
+                ai_response = response.text
+                message_placeholder.markdown(ai_response)
                 
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+                # AI का जवाब हिस्ट्री में सेव करना
+                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+                
+            except Exception as e:
+                error_msg = f"❌ सिस्टम एरर: {str(e)}"
+                message_placeholder.error(error_msg)
+                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+        
+        # पेज को रिफ्रेश करना ताकि UI सही से अपडेट हो जाए
         st.rerun()
+        
