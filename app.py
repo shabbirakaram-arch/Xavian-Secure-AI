@@ -100,9 +100,7 @@ else:
             if "image" in message:
                 st.image(message["image"], use_container_width=True)
 
-                # === 1. CHAT HISTORY LOOP KE THEEK NICHE YAHAN SE PASTE KAREIN ===
-    
-                        # === CHAT HISTORY LOOP KE THEEK NICHE YAHAN SE PASTE KAREIN ===
+                # === CHAT HISTORY LOOP KE THEEK NICHE YAHAN SE PASTE KAREIN ===
         st.markdown("---")
         
         # Photo Upload Box (Ab yeh else block ke andar sahi spacing par hai)
@@ -144,6 +142,7 @@ else:
                     
                 except Exception as e:
                     message_placeholder.error(f"Error aaya hai: {e}")
+                    
 
 
         doc_file = st.file_uploader("➕ Files / Gallery / Lens", type=["jpg", "jpeg", "png", "pdf", "txt"], key="sidebar_uploader")
