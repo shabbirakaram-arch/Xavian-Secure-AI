@@ -17,13 +17,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 3. PROFESSIONAL CYBER-SECURITY DARK THEME (NO BLUE) ---
+# --- 3. PROFESSIONAL CYBER-SECURITY DARK THEME WITH FIXED BOTTOM CHAT BOX ---
 st.markdown("""
     <style>
     /* Main Background */
     .stApp {
         background-color: #0b0c10;
         color: #c5c6c7;
+        padding-bottom: 100px; /* Taki chat boxes chat_input ke peeche na chupein */
     }
     
     /* Sidebar Metallic Styling */
@@ -32,7 +33,7 @@ st.markdown("""
         border-right: 1px solid #45a29e;
     }
     
-    /* Xavian Secure AI Title - Emerald Glow */
+    /* Xavian Secure AI Title */
     .main-title {
         font-size: 2.5rem;
         font-weight: 800;
@@ -62,6 +63,17 @@ st.markdown("""
         margin-bottom: 10px !important;
     }
     
+    /* 🎯 CRITICAL FIX: Chat Input Box ko hamesha screen ke bottom par chipkane ke liye CSS */
+    div[data-testid="stChatInput"] {
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 0;
+        right: 0;
+        z-index: 999999;
+        background-color: #0b0c10 !important;
+        padding: 10px 5% !important;
+    }
+
     /* Hide Default Header & Footer */
     #MainMenu, footer, header {visibility: hidden;}
     </style>
@@ -72,7 +84,6 @@ api_configured = False
 api_key = None
 model = None
 
-# Streamlit Secrets se automatic key dhoondhne ka loop
 for key_name in ["GEMINI_SECRET_KEY", "GEMINI_API_KEY", "XAVIAN_SECRET_KEY", "XAVIAN_API_KEY"]:
     if key_name in st.secrets and st.secrets[key_name] != "":
         api_key = st.secrets[key_name]
@@ -101,7 +112,6 @@ with st.sidebar:
     st.caption("Enterprise Security Framework")
     st.markdown("---")
     
-    # Token Authentication Input
     secret_input = st.text_input("Enter Activation Token:", type="password")
     
     if st.button("Verify Token", use_container_width=True):
@@ -126,10 +136,7 @@ with st.sidebar:
 col_main, col_logs = st.columns([0.7, 0.3])
 
 with col_main:
-    # Saaf aur clear title bina fuzool ke text ke
     st.markdown('<div class="main-title">🛡️ Xavian Secure AI</div>', unsafe_allow_html=True)
-    
-    # Optional Image Attachment Box
     uploaded_image = st.file_uploader("Attach Document/Image (Optional)", type=["png", "jpg", "jpeg"])
     
     # Render Previous Messages
@@ -139,7 +146,7 @@ with col_main:
             if "image" in message and message["image"] is not None:
                 st.image(message["image"], width=250)
 
-    # Main Chat Input Box
+    # Main Chat Input Box (Ab ye CSS ki wajah se hamesha bottom par float karega)
     if user_prompt := st.chat_input("Enter command or ask a question..."):
         
         current_msg = {"role": "user", "content": user_prompt, "image": None}
@@ -155,12 +162,10 @@ with col_main:
             if input_img_obj:
                 st.image(input_img_obj, width=250)
                 
-        # Assistant Response Generator
         with st.chat_message("assistant"):
             response_placeholder = st.empty()
             prompt_lower = user_prompt.lower()
             
-            # ROUTE 1: AGENT AUTOMATION (PHASE 2 & 3 SIMULATION)
             if st.session_state.agent_unlocked and ("install active directory" in prompt_lower or "configure firewall" in prompt_lower):
                 response_placeholder.markdown("🔄 *Executing Executive Code Sequence...*")
                 time.sleep(2)
@@ -169,7 +174,6 @@ with col_main:
                 st.session_state.chat_history.append({"role": "assistant", "content": agent_res})
                 st.session_state.system_logs.append(f"COMMAND: {user_prompt} executed via Agent Core.")
             
-            # ROUTE 2: NORMAL CHATBOT MODE (PHASE 1)
             else:
                 if not api_configured:
                     error_msg = "⚠️ **API Key Missing:** Kripya Streamlit Settings -> Secrets mein jaakar apni Gemini Key add karein tabhi reply aayega!"
