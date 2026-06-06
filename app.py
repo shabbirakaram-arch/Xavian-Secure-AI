@@ -12,12 +12,12 @@ os.environ["PYTHONHTTPSVERIFY"] = "0"
 # --- 2. INITIALIZE STREAMLIT PAGE CONFIG ---
 st.set_page_config(
     page_title="Xavian Secure AI",
-    page_icon="🛡️", # Logo pehle wala hamesha ke liye fixed
+    page_icon="🛡️", 
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 3. PREMIUM ULTIMATE GEMINI INTERFACE EMULATION (CUSTOM CSS) ---
+# --- 3. PREMIUM GEMINI INTERFACE & WAVE ANIMATION (CUSTOM CSS) ---
 st.markdown("""
     <style>
     /* Gemini App Signature Dark Fluid Background */
@@ -57,7 +57,7 @@ st.markdown("""
         font-family: 'Google Sans', system-ui, sans-serif;
     }
     
-    /* Chat Message Bubbles - Micro Rounded borderless look */
+    /* Chat Message Bubbles */
     div[data-testid="stChatMessage"] {
         background-color: transparent !important;
         border: none !important;
@@ -79,11 +79,48 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.4);
     }
     
-    /* Input textarea styling overrides */
     div[data-testid="stChatInput"] textarea {
         background-color: transparent !important;
         color: #e3e3e3 !important;
         border-radius: 32px !important;
+    }
+
+    /* 🌊 GEMINI THREE-DOT WAVE ANIMATION CSS 🌊 */
+    .gemini-loader {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 12px 4px;
+    }
+    
+    .gemini-loader .dot {
+        width: 10px;
+        height: 10px;
+        background: linear-gradient(90deg, #9b51e0, #3085ff);
+        border-radius: 50%;
+        animation: wave-wave 1.2s infinite ease-in-out;
+        opacity: 0.4;
+    }
+    
+    .gemini-loader .dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+    
+    .gemini-loader .dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+    
+    @keyframes wave-wave {
+        0%, 100% {
+            transform: translateY(0);
+            opacity: 0.4;
+            filter: blur(0px);
+        }
+        50% {
+            transform: translateY(-8px);
+            opacity: 1;
+            filter: drop-shadow(0 0 4px #3085ff);
+        }
     }
     
     /* Sidebar Security Terminal Box */
@@ -97,7 +134,6 @@ st.markdown("""
         font-size: 0.8rem;
     }
     
-    /* Hide Default Streamlit Elements completely */
     #MainMenu, footer, header {visibility: hidden;}
     div[data-testid="stFileUploader"] {margin-bottom: 20px;}
     </style>
@@ -160,9 +196,9 @@ with st.sidebar:
     log_content = "\n".join(st.session_state.system_logs[-5:])
     st.markdown(f'<div class="terminal-box">{log_content}</div>', unsafe_allow_html=True)
 
-# --- 7. MAIN CLEAN INTERFACE (GEMINI STYLE) ---
+# --- 7. MAIN INTERFACE (GEMINI STYLE) ---
 
-# Top Bar header setup - Shield logo restored here
+# Top Bar header setup
 st.markdown('<div class="gemini-title">🛡️ Xavian Secure AI</div>', unsafe_allow_html=True)
 
 # Original Gemini greeting display if history is empty
@@ -179,7 +215,7 @@ for message in st.session_state.chat_history:
         if "image" in message and message["image"] is not None:
             st.image(message["image"], width=250)
 
-# Main Bottom Chat Box - Placeholder customized to "Ask XavianSecureAI..."
+# Main Bottom Chat Box
 if user_prompt := st.chat_input("Ask XavianSecureAI..."):
     
     current_msg = {"role": "user", "content": user_prompt, "image": None}
@@ -199,9 +235,17 @@ if user_prompt := st.chat_input("Ask XavianSecureAI..."):
         response_placeholder = st.empty()
         prompt_lower = user_prompt.lower()
         
+        # 🌊 Render the Custom Three-Dot Wave Animation while waiting
+        response_placeholder.markdown("""
+            <div class="gemini-loader">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        """, unsafe_allow_html=True)
+        
         # AGENT ROUTING
         if st.session_state.agent_unlocked and ("install active directory" in prompt_lower or "configure firewall" in prompt_lower):
-            response_placeholder.markdown("🔄 *Executing Executive Code Sequence...*")
             time.sleep(1.5)
             agent_res = "🚨 **[Interactive Alert]** Sir, configuration process complete ho chuka hai. Kya main rules cross-check karke save kar du?"
             response_placeholder.markdown(agent_res)
@@ -215,7 +259,6 @@ if user_prompt := st.chat_input("Ask XavianSecureAI..."):
                 response_placeholder.warning(error_msg)
                 st.session_state.system_logs.append("ERROR: Token target failed.")
             else:
-                response_placeholder.markdown("✨ *Thinking...*")
                 try:
                     if input_img_obj:
                         ai_res = model.generate_content([user_prompt, input_img_obj])
@@ -223,11 +266,12 @@ if user_prompt := st.chat_input("Ask XavianSecureAI..."):
                         ai_res = model.generate_content(user_prompt)
                         
                     final_text = ai_res.text
+                    # Animation ko hata kar seedhe genuine response display karna
                     response_placeholder.markdown(final_text)
                     st.session_state.chat_history.append({"role": "assistant", "content": final_text})
                     st.session_state.system_logs.append("SUCCESS: Broadcast ok.")
                 except Exception as e:
-                    response_placeholder.error(f"API Error: {str(e)}")
+                    response_placeholder.error(f"API Error")
                     st.session_state.system_logs.append(f"EXCEPTION.")
     
     st.rerun()
