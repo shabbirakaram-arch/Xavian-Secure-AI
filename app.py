@@ -17,22 +17,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 3. EKDOM PROFESSIONAL CYBER-SECURITY DARK THEME (NO BLUE) ---
+# --- 3. PROFESSIONAL CYBER-SECURITY DARK THEME (NO BLUE) ---
 st.markdown("""
     <style>
-    /* Pure App ka background ekdum premium dark charcoal */
+    /* Main Background */
     .stApp {
         background-color: #0b0c10;
         color: #c5c6c7;
     }
     
-    /* Sidebar ka dark metallic theme */
+    /* Sidebar Metallic Styling */
     section[data-testid="stSidebar"] {
         background-color: #1f2833 !important;
         border-right: 1px solid #45a29e;
     }
     
-    /* Xavian Secure AI Title - Emerald Green Professional Glow */
+    /* Xavian Secure AI Title - Emerald Glow */
     .main-title {
         font-size: 2.5rem;
         font-weight: 800;
@@ -42,7 +42,7 @@ st.markdown("""
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     
-    /* Terminal Box for Logs */
+    /* Security Terminal Box for Logs */
     .terminal-box {
         background-color: #000000;
         border: 1px solid #45a29e;
@@ -53,7 +53,7 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Chat Bubbles - Deep Slate Gray */
+    /* Chat Bubbles Style */
     div[data-testid="stChatMessage"] {
         background-color: #1f2833 !important;
         border: 1px solid #2f3c4f !important;
@@ -62,15 +62,18 @@ st.markdown("""
         margin-bottom: 10px !important;
     }
     
-    /* Default Header aur Footer ko gayab karna */
+    /* Hide Default Header & Footer */
     #MainMenu, footer, header {visibility: hidden;}
     </style>
+""", unsafe_allow_html=True)
+
 # --- 4. SECURE API KEY CONFIGURATION (UNIVERSAL FIX) ---
 api_configured = False
 api_key = None
+model = None
 
-# Aapne settings me jo bhi naam rakha ho, ye use automatic dhoondh lega
-for key_name in ["GEMINI_SECRET_KEY", "GEMINI_API_KEY", "XAVIAN_SECRET_KEY"]:
+# Streamlit Secrets se automatic key dhoondhne ka loop
+for key_name in ["GEMINI_SECRET_KEY", "GEMINI_API_KEY", "XAVIAN_SECRET_KEY", "XAVIAN_API_KEY"]:
     if key_name in st.secrets and st.secrets[key_name] != "":
         api_key = st.secrets[key_name]
         break
@@ -83,11 +86,6 @@ if api_key:
     except Exception:
         model = None
         api_configured = False
-else:
-    model = None
-    api_configured = False
-
-    api_configured = False
 
 # --- 5. INITIALIZE STATE MANAGEMENT ---
 if "agent_unlocked" not in st.session_state:
@@ -95,7 +93,7 @@ if "agent_unlocked" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "system_logs" not in st.session_state:
-    st.session_state.system_logs = ["Xavian System Ready. API Validation pending..."]
+    st.session_state.system_logs = ["Xavian System Ready. Scanning security tokens..."]
 
 # --- 6. SIDEBAR: CONTROL CENTER & SECRET AUTHENTICATION ---
 with st.sidebar:
@@ -124,24 +122,24 @@ with st.sidebar:
     else:
         st.info("📱 MODE: NORMAL CHAT")
 
-# --- 7. MAIN INTERFACE ---
+# --- 7. MAIN INTERFACE LAYOUT ---
 col_main, col_logs = st.columns([0.7, 0.3])
 
 with col_main:
-    # Ab sirf "Xavian Secure AI" likha rahega upar ekdum professionally
+    # Saaf aur clear title bina fuzool ke text ke
     st.markdown('<div class="main-title">🛡️ Xavian Secure AI</div>', unsafe_allow_html=True)
     
-    # Image Attachment (Optional)
+    # Optional Image Attachment Box
     uploaded_image = st.file_uploader("Attach Document/Image (Optional)", type=["png", "jpg", "jpeg"])
     
-    # History Render
+    # Render Previous Messages
     for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if "image" in message and message["image"] is not None:
                 st.image(message["image"], width=250)
 
-    # Chat Input Box
+    # Main Chat Input Box
     if user_prompt := st.chat_input("Enter command or ask a question..."):
         
         current_msg = {"role": "user", "content": user_prompt, "image": None}
@@ -157,28 +155,26 @@ with col_main:
             if input_img_obj:
                 st.image(input_img_obj, width=250)
                 
-        # Assistant Processing Block
+        # Assistant Response Generator
         with st.chat_message("assistant"):
             response_placeholder = st.empty()
-            
             prompt_lower = user_prompt.lower()
             
-            # ROUTE 1: AGENT AUTOMATION TRIGGER
+            # ROUTE 1: AGENT AUTOMATION (PHASE 2 & 3 SIMULATION)
             if st.session_state.agent_unlocked and ("install active directory" in prompt_lower or "configure firewall" in prompt_lower):
                 response_placeholder.markdown("🔄 *Executing Executive Code Sequence...*")
                 time.sleep(2)
                 agent_res = "🚨 **[Interactive Alert]** Sir, configuration process complete ho chuka hai. Kya main rules cross-check karke save kar du?"
                 response_placeholder.markdown(agent_res)
                 st.session_state.chat_history.append({"role": "assistant", "content": agent_res})
-                st.session_state.system_logs.append(f"COMMAND: {user_prompt} processed via Agent.")
+                st.session_state.system_logs.append(f"COMMAND: {user_prompt} executed via Agent Core.")
             
-            # ROUTE 2: NORMAL CHATBOT
+            # ROUTE 2: NORMAL CHATBOT MODE (PHASE 1)
             else:
                 if not api_configured:
-                    # Agar cloud setting me key nahi hogi toh ye help text dikhega
-                    error_msg = "⚠️ **API Key Missing:** Kripya Streamlit Advanced Settings me jaakar `GEMINI_SECRET_KEY` ka secret add karein tabhi reply aayega!"
+                    error_msg = "⚠️ **API Key Missing:** Kripya Streamlit Settings -> Secrets mein jaakar apni Gemini Key add karein tabhi reply aayega!"
                     response_placeholder.warning(error_msg)
-                    st.session_state.system_logs.append("ERROR: Gemini API key missing in Secrets.")
+                    st.session_state.system_logs.append("ERROR: API key target not found.")
                 else:
                     response_placeholder.markdown("🤖 *Thinking...*")
                     try:
@@ -190,14 +186,14 @@ with col_main:
                         final_text = ai_res.text
                         response_placeholder.markdown(final_text)
                         st.session_state.chat_history.append({"role": "assistant", "content": final_text})
-                        st.session_state.system_logs.append("SUCCESS: Response dispatched.")
+                        st.session_state.system_logs.append("SUCCESS: AI Response dispatched.")
                     except Exception as e:
                         response_placeholder.error(f"API Error: {str(e)}")
                         st.session_state.system_logs.append(f"EXCEPTION: {str(e)}")
         
         st.rerun()
 
-# --- 8. RIGHT SIDE: TERMINAL SECURITY LOGS ---
+# --- 8. RIGHT SIDEBAR: TERMINAL LOGS WINDOW ---
 with col_logs:
     st.markdown("#### 📑 **Security Logs**")
     log_content = "\n".join(st.session_state.system_logs[-8:])
