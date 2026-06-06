@@ -65,17 +65,28 @@ st.markdown("""
     /* Default Header aur Footer ko gayab karna */
     #MainMenu, footer, header {visibility: hidden;}
     </style>
-""", unsafe_allow_html=True)
+# --- 4. SECURE API KEY CONFIGURATION (UNIVERSAL FIX) ---
+api_configured = False
+api_key = None
 
-# --- 4. SECURE API KEY CONFIGURATION ---
-# Check karega ki kya Streamlit Cloud ki settings me key daali gayi hai
-if "GEMINI_SECRET_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_SECRET_KEY"]
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    api_configured = True
+# Aapne settings me jo bhi naam rakha ho, ye use automatic dhoondh lega
+for key_name in ["GEMINI_SECRET_KEY", "GEMINI_API_KEY", "XAVIAN_SECRET_KEY"]:
+    if key_name in st.secrets and st.secrets[key_name] != "":
+        api_key = st.secrets[key_name]
+        break
+
+if api_key:
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        api_configured = True
+    except Exception:
+        model = None
+        api_configured = False
 else:
     model = None
+    api_configured = False
+
     api_configured = False
 
 # --- 5. INITIALIZE STATE MANAGEMENT ---
