@@ -12,9 +12,9 @@ os.environ["PYTHONHTTPSVERIFY"] = "0"
 # --- 2. INITIALIZE STREAMLIT PAGE CONFIG ---
 st.set_page_config(
     page_title="Xavian Secure AI",
-    page_icon="✨",
+    page_icon="🛡️", # Logo pehle wala hamesha ke liye fixed
     layout="wide",
-    initial_sidebar_state="collapsed" # Default collapsed taaki full screen clean mile
+    initial_sidebar_state="collapsed"
 )
 
 # --- 3. PREMIUM ULTIMATE GEMINI INTERFACE EMULATION (CUSTOM CSS) ---
@@ -65,7 +65,7 @@ st.markdown("""
         margin-bottom: 15px !important;
     }
     
-    /* 🎯 PERFECT FLOATING BOTTOM INPUT BAR (GEMINI MATCH) */
+    /* PERFECT FLOATING BOTTOM INPUT BAR */
     div[data-testid="stChatInput"] {
         position: fixed !important;
         bottom: 30px !important;
@@ -130,7 +130,7 @@ if "chat_history" not in st.session_state:
 if "system_logs" not in st.session_state:
     st.session_state.system_logs = ["Xavian System Ready. Interface loaded."]
 
-# --- 6. SIDEBAR: CONTROL PANEL & SECURITY TERMINAL ONLY ---
+# --- 6. SIDEBAR: CONTROL PANEL & SECURITY TERMINAL ---
 with st.sidebar:
     st.markdown("### 🛡️ **Xavian Control Panel**")
     st.caption("Enterprise Agent Console")
@@ -162,10 +162,10 @@ with st.sidebar:
 
 # --- 7. MAIN CLEAN INTERFACE (GEMINI STYLE) ---
 
-# Top Bar header setup
-st.markdown('<div class="gemini-title">✨ Xavian Secure AI</div>', unsafe_allow_html=True)
+# Top Bar header setup - Shield logo restored here
+st.markdown('<div class="gemini-title">🛡️ Xavian Secure AI</div>', unsafe_allow_html=True)
 
-# Agar chat history khali hai, toh original Gemini greeting display karein
+# Original Gemini greeting display if history is empty
 if not st.session_state.chat_history:
     st.markdown('<div class="gemini-greeting">Ready when you are</div>', unsafe_allow_html=True)
 
@@ -179,8 +179,8 @@ for message in st.session_state.chat_history:
         if "image" in message and message["image"] is not None:
             st.image(message["image"], width=250)
 
-# Main Bottom Chat Box
-if user_prompt := st.chat_input("Ask Gemini or execute automation..."):
+# Main Bottom Chat Box - Placeholder customized to "Ask XavianSecureAI..."
+if user_prompt := st.chat_input("Ask XavianSecureAI..."):
     
     current_msg = {"role": "user", "content": user_prompt, "image": None}
     input_img_obj = None
