@@ -1,25 +1,23 @@
 import streamlit as st
-from google import genai
-import os
+import requests
+import json
 
-# 1. Page Configuration (Mobile & Desktop dono ke liye sleek look)
+# 1. Page Configuration (Sleek Desktop & Mobile Layout)
 st.set_page_config(
     page_title="Xavian Secure AI", 
     page_icon="🛡️", 
     layout="centered"
 )
 
-# 2. Gemini API Client Setup
-# Aapko apni Gemini API Key system environment me set karni hogi, ya phir yahan direct paste kar sakte hain.
-# Secure tarika: os.environ.get("GEMINI_API_KEY")
-# Testing ke liye aap direct string bhi daal sakte hain: client = genai.Client(api_key="APNI_API_KEY_YAHAN_LIKHO")
-try:
-    client = genai.Client()
-except Exception as e:
-    st.error("API Key nahi mili! Kripya apni Gemini API Key set karein.")
+# 2. API Key Setup (Streamlit Secrets se uthayega)
+# Agar aap testing kar rahe hain toh direct string daal sakte hain: GEMINI_API_KEY = "AIzaSy..."
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
+
+if not GEMINI_API_KEY:
+    st.error("API Key nahi mili! Kripya Streamlit Secrets mein GEMINI_API_KEY set karein.")
     st.stop()
 
-# 3. TOP INTERFACE (Jaise aapki image 1000101366.png mein tha)
+# 3. TOP INTERFACE (Jaise image 1000101366.png mein tha)
 st.markdown("## 🛡️ Xavian Secure AI")
 
 # Voice Input Guide Instruction
@@ -29,11 +27,10 @@ st.markdown(
 st.write("---")
 
 # 4. CHAT HISTORY MANAGEMENT (Session State)
-# Agar chat history pehle se nahi bani, toh initialize karein
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Pehle se maujood chat messages ko screen par render/display karna
+# Purani chat history ko screen par dikhana
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -41,30 +38,44 @@ for message in st.session_state.messages:
 # 5. GEMINI STYLE CHAT INPUT BOX (Bottom Fixed)
 if user_input := st.chat_input("Xavian Secure AI se kuch bhi poochein..."):
     
-    # User ka message screen par turant dikhayein
+    # User ka message screen par dikhayein
     with st.chat_message("user"):
         st.markdown(user_input)
     
-    # Message ko history mein save karein
+    # History mein save karein
     st.session_state.messages.append({"role": "user", "content": user_input})
     
-    # Gemini AI se response generate karna
+    # Assistant response block
     with st.chat_message("assistant"):
-        message_placeholder = st.empty() # Loading/Streaming effect ke liye placeholder
-        full_response = ""
+        message_placeholder = st.empty()
+        
+        # Direct HTTP POST Request (Bina kisi library ke jhanjhat ke)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        headers = {'Content-Type': 'application/json'}
+        payload = {
+            "contents": [
+                {
+                    "parts": [{"text": user_input}]
+                }
+            ]
+        }
         
         try:
-            # Gemini-2.5-flash model fast aur efficient chat ke liye best hai
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=user_input
-            )
-            full_response = response.text
+            # API ko call karna
+            response = requests.post(url, headers=headers, json=payload)
+            response_data = response.json()
+            
+            # Response se text nikalna
+            if response.status_code == 200:
+                full_response = response_data['candidates'][0]['content']['parts'][0]['text']
+            else:
+                full_response = f"API Error: {response_data.get('error', {}).get('message', 'Kuch galat hua')}"
+                
             message_placeholder.markdown(full_response)
             
         except Exception as e:
-            full_response = f"Sorry, ek error aaya: {str(e)}"
+            full_response = f"Connection Error: {str(e)}"
             message_placeholder.markdown(full_response)
             
-    # AI ka response bhi history mein save karein taaki screen refresh par gayab na ho
+    # AI ka response history mein save karein
     st.session_state.messages.append({"role": "assistant", "content": full_response})
