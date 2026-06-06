@@ -1,103 +1,70 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 import os
 
-# Page Configuration (Gemini Theme)
+# 1. Page Configuration (Mobile & Desktop dono ke liye sleek look)
 st.set_page_config(
-    page_title="Xavian Secure AI",
-    page_icon="✨",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    page_title="Xavian Secure AI", 
+    page_icon="🛡️", 
+    layout="centered"
 )
 
-# Custom CSS for Gemini-like UI Dark/Light adaptive look
-st.markdown("""
-    <style>
-        /* Hide Streamlit Header and Footer */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        
-        /* Main Title Styling */
-        .gemini-title {
-            font-size: 3rem;
-            font-weight: 600;
-            background: linear-gradient(45deg, #4285F4, #9B51E0, #EA4335);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-align: center;
-            margin-bottom: 5px;
-        }
-        .gemini-subtitle {
-            font-size: 1.2rem;
-            color: #80868B;
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        /* Chat Input Styling alignment */
-        .stChatInputContainer {
-            padding-bottom: 20px;
-        }
-    </style>
-""", unsafe_allow_html=True)
+# 2. Gemini API Client Setup
+# Aapko apni Gemini API Key system environment me set karni hogi, ya phir yahan direct paste kar sakte hain.
+# Secure tarika: os.environ.get("GEMINI_API_KEY")
+# Testing ke liye aap direct string bhi daal sakte hain: client = genai.Client(api_key="APNI_API_KEY_YAHAN_LIKHO")
+try:
+    client = genai.Client()
+except Exception as e:
+    st.error("API Key nahi mili! Kripya apni Gemini API Key set karein.")
+    st.stop()
 
-# App Header
-st.markdown('<div class="gemini-title">Xavian Secure AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="gemini-subtitle">How can I help you today?</div>', unsafe_allow_html=True)
+# 3. TOP INTERFACE (Jaise aapki image 1000101366.png mein tha)
+st.markdown("## 🛡️ Xavian Secure AI")
 
-# Secure API Key Management (GitHub Secrets / Environment Variables)
-# Local testing ke liye aap .env use kr skte ho, GitHub dynamic hosting ke liye Secrets me dalna hoga.
-api_key = os.environ.get("GEMINI_API_KEY")
+# Voice Input Guide Instruction
+st.markdown(
+    "🎙️ **Voice Input Guide:** Apne mobile keyboard ke **mike (🎙️)** icon ko daba kar bolein."
+)
+st.write("---")
 
-if not api_key:
-    # Agar environment variable nahi milta toh input box dikhayega (Fallback)
-    with st.expander("🔑 API Key Setup (Required if not set in Environment)", expanded=True):
-        api_key = st.text_input("Enter your Gemini API Key:", type="password")
-        st.caption("Get your key from Google AI Studio. For production, set it as 'GEMINI_API_KEY' in GitHub Secrets/Streamlit Cloud.")
+# 4. CHAT HISTORY MANAGEMENT (Session State)
+# Agar chat history pehle se nahi bani, toh initialize karein
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Initialize Gemini Model if API key is available
-if api_key:
-    genai.configure(api_key=api_key)
-    # Using the standard stable flash/pro model
-    model = genai.GenerativeModel("gemini-1.5-flash")
+# Pehle se maujood chat messages ko screen par render/display karna
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 5. GEMINI STYLE CHAT INPUT BOX (Bottom Fixed)
+if user_input := st.chat_input("Xavian Secure AI se kuch bhi poochein..."):
     
-    # Initialize chat history in session state if it doesn't exist
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    # React to user input
-    if prompt := st.chat_input("Ask Xavian Secure AI..."):
-        # Display user message in chat message container
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # User ka message screen par turant dikhayein
+    with st.chat_message("user"):
+        st.markdown(user_input)
+    
+    # Message ko history mein save karein
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    
+    # Gemini AI se response generate karna
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty() # Loading/Streaming effect ke liye placeholder
+        full_response = ""
         
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-
-        # Generate response from Gemini
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
-            full_response = ""
+        try:
+            # Gemini-2.5-flash model fast aur efficient chat ke liye best hai
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=user_input
+            )
+            full_response = response.text
+            message_placeholder.markdown(full_response)
             
-            try:
-                # Format context history for Gemini API
-                # (Optional: optimization for multi-turn conversation)
-                response = model.generate_content(prompt)
-                full_response = response.text
-                message_placeholder.markdown(full_response)
-                
-            except Exception as e:
-                full_response = f"⚠️ Error: {str(e)}"
-                message_placeholder.markdown(full_response)
-                
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
-
-else:
-    st.info("Please provide a Gemini API Key to start the conversation.", icon="💡")
+        except Exception as e:
+            full_response = f"Sorry, ek error aaya: {str(e)}"
+            message_placeholder.markdown(full_response)
+            
+    # AI ka response bhi history mein save karein taaki screen refresh par gayab na ho
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
