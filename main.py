@@ -5,22 +5,23 @@ from google import genai
 from google.genai import types
 
 app = Flask(__name__)
-CORS(app)  # Isse Flutter app bina kisi restriction ke backend se connect ho payegi
+CORS(app)  # Isse cross-origin restrictions hat jayengi
 
-# 1. Gemini Client Initialize karein
-# Laptop par run karte waqt terminal mein apna API key set karein: export GEMINI_API_KEY="your_api_key"
+# Gemini Client Initialize karein
+# Render ke Environment Variables mein GEMINI_API_KEY add karna mat bhulna bhai
 client = genai.Client()
 
-@app.route('/chat', methods=['POST'])
+# Route ko '/ask' kiya taaki HTML file ke fetch request se match ho sake
+@app.route('/ask', methods=['POST'])
 def chat_endpoint():
     try:
         data = request.get_json()
-        user_message = data.get('message', '')
+        user_message = data.get('prompt', '')  # HTML se 'prompt' key aati hai
 
         if not user_message:
-            return jsonify({'error': 'Message cannot be empty'}), 400
+            return jsonify({'error': 'Message cannot be empty!'}), 400
 
-        # 2. Gemini AI ko Cyber-Security Expert banane ke liye System Instruction set karna
+        # Gemini AI ko System Instruction set karna
         config = types.GenerateContentConfig(
             system_instruction=(
                 "You are Xavian Secure AI, an elite cyber security expert, network engineer, and digital forensics specialist. "
@@ -30,19 +31,20 @@ def chat_endpoint():
             temperature=0.7,
         )
 
-        # 3. Gemini Model se response generate karwana
+        # Gemini Model se response generate karwana
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=user_message,
-            config=config,
+            config=config
         )
 
-        return jsonify({'response': response.text})
+        # HTML script 'answer' key expect karti hai
+        return jsonify({'answer': response.text})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
-    # Cloud (Render) aur local execution dono ke liye port setup
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+    
