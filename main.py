@@ -1,3 +1,4 @@
+import mimetypes
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -117,7 +118,13 @@ Be friendly, professional and concise.
 
         if uploaded_file:
             file_bytes = uploaded_file.read()
-            mime_type = uploaded_file.mimetype or "application/octet-stream"
+            mime_type = uploaded_file.mimetype
+
+            # Agar Flutter/Client generic octet-stream bheje toh filename se asli MIME type pehchanen
+            if not mime_type or mime_type == "application/octet-stream":
+                guessed_type, _ = mimetypes.guess_type(uploaded_file.filename or "")
+                mime_type = guessed_type or "image/jpeg"
+
             contents.append(
                 types.Part.from_bytes(
                     data=file_bytes,
