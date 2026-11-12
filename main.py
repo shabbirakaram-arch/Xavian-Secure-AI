@@ -53,18 +53,21 @@ def health():
 def ask():
 
     try:
-        data = request.get_json(silent=True)
+        user_message = ""
+        uploaded_file = None
 
-        if not data:
+        # Check karein ki request Multipart (File + Text) hai ya normal JSON
+        if request.content_type and "multipart/form-data" in request.content_type:
+            user_message = request.form.get("prompt", "").strip()
+            uploaded_file = request.files.get("file")
+        else:
+            data = request.get_json(silent=True)
+            if data:
+                user_message = data.get("prompt", "").strip()
+
+        if not user_message and not uploaded_file:
             return jsonify({
-                "error": "Request body is missing."
-            }), 400
-
-        user_message = data.get("prompt", "").strip()
-
-        if not user_message:
-            return jsonify({
-                "error": "Please enter a message."
+                "error": "Please enter a message or attach a file."
             }), 400
 
         # --------------------------------------------------
@@ -88,6 +91,7 @@ Your job is to help the user with:
 - Productivity
 
 Give accurate, practical and easy-to-understand answers.
+If the user attaches an image, document, or PDF, analyze it thoroughly and explain clearly.
 
 Do not pretend to have performed an action if you have not actually performed it.
 
@@ -103,12 +107,33 @@ Be friendly, professional and concise.
         )
 
         # --------------------------------------------------
+        # Contents (File + Text dono support karne ke liye)
+        # --------------------------------------------------
+
+        contents = []
+
+        if uploaded_file:
+            file_bytes = uploaded_file.read()
+            mime_type = uploaded_file.mimetype or "application/octet-stream"
+            contents.append(
+                types.Part.from_bytes(
+                    data=file_bytes,
+                    mime_type=mime_type,
+                )
+            )
+
+        if user_message:
+            contents.append(user_message)
+        elif uploaded_file:
+            contents.append("Please analyze this file and explain its key details clearly.")
+
+        # --------------------------------------------------
         # Gemini request
         # --------------------------------------------------
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=user_message,
+            contents=contents,
             config=config
         )
 
