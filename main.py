@@ -122,12 +122,13 @@ def ask():
             try:
                 history = json.loads(history_raw)
             except Exception:
-                history = []
-
-            if "file" in request.files:
+                history = []if "file" in request.files:
                 uploaded = request.files["file"]
                 file_bytes = uploaded.read()
-                mime_type = uploaded.mimetype or "application/octet-stream"
+                mime_type = uploaded.mimetype or ""
+                if not mime_type or mime_type == "application/octet-stream":
+                    guessed_type, _ = mimetypes.guess_type(uploaded.filename or "")
+                    mime_type = guessed_type or "text/plain"
                 if file_bytes:
                     file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
         else:
