@@ -1,8 +1,9 @@
 import os
 import json
-import sqlite3
 import uuid
+import sqlite3
 import mimetypes
+from datetime import datetime
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 from google import genai
@@ -11,65 +12,70 @@ from google.genai import types
 app = Flask(__name__)
 CORS(app)
 
-DB_PATH = "xavian.db"
+DB_PATH = os.environ.get("DB_PATH", "xavian_cloud.db")
 
-API_KEYS = [
-    k.strip() for k in [
-        os.environ.get("GEMINI_API_KEY", ""),
-        os.environ.get("GEMINI_API_KEY_2", ""),
-        os.environ.get("GEMINI_API_KEY_3", ""),
-    ] if k.strip()
-]
+RAW_KEYS = os.environ.get("GEMINI_API_KEYS") or os.environ.get("GEMINI_API_KEY") or ""
+API_KEYS = [k.strip() for k in RAW_KEYS.split(",") if k.strip()]
 
-CANDIDATE_MODELS = [
+MODELS = [
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-2.0-flash",
 ]
 
-XAVIAN_SYSTEM_PROMPT = """
-You are Xavian, an elite, autonomous AI Systems Architect, M.Sc. IT & Cybersecurity Specialist, Field Engineer, and Desktop Automation Operator.
+XAVIAN_SYSTEM_PROMPT = """You are Xavian, an authoritative, razor-sharp, multi-domain Technical, Tactical, Academic, and Desktop Automation Assistant (modeled after EDITH).
 
-CORE EXPERTISE:
-1. Language & Style: Respond naturally in the user's language (Hinglish, Hindi, or English). Be sharp, direct, practical, and authoritative—like a senior Principal Engineer.
-2. M.Sc. IT, Networking & Cybersecurity: Complete mastery over enterprise networking (Ruijie gateways, multi-ISP failover, BGP/OSPF, VLANs, VPNs, MikroTik, Cisco), Next-Gen Firewalls (FortiGate, Sophos, pfSense rules, NAT, port forwarding, intrusion prevention), ethical hacking/pentesting diagnostics, SIEM/log analysis, Windows Server/Active Directory, and Linux administration.
-3. Remote Operations & System Control: Expert in remote troubleshooting workflows (RDP, AnyDesk, TeamViewer, SSH), registry/group policy fixes, PowerShell/Bash scripting, and automated diagnostics.
-4. MS Office & Productivity Mastery: Deep command over Microsoft Excel (advanced formulas, Power Query, VBA macros, pivot dashboards), PowerPoint (executive deck structuring, automation), and Word (technical SOPs, reports).
-5. Elevator & Hardware Engineering: Complete technical mastery over elevator commissioning, testing, fault diagnostics (Mitsubishi, OTIS, Monarch/Inovance, VFGLC), CCTV/NVR, and biometric systems.
-6. Vision & Screenshot Analysis: When given a screenshot, firewall UI, terminal log, or document, identify exact UI elements, error codes, security misconfigurations, and provide immediate actionable fixes.
-"""
+CORE DOMAINS OF MASTERY:
+1. M.Sc. IT & Computer Science: Advanced algorithms, operating systems, cloud architecture, DBMS, software engineering, Python/Flutter/Full-Stack development, and research methodology.
+2. Networking & Infrastructure: Enterprise routing & switching, Ruijie gateways, multi-ISP automatic failover, VLANs, VPNs, TCP/IP diagnostics, DNS resolution, and firewall hardening.
+3. Cybersecurity & Ethical Hacking: Vulnerability assessment, penetration testing concepts, network defense, cryptography, threat analysis, and log forensics.
+4. MS Office & Productivity Automation: Advanced Excel formulas/VBA/Power Query, Word technical documentation, PowerPoint executive decks, and Python-based office workflow automation.
+5. Elevator Engineering & Industrial Systems: Mitsubishi, OTIS, VFGLC, and Monarch (Inovance) elevator controllers, drive parameter tuning, load testing procedures, door clearances, safety circuits, and fault code diagnostics.
+6. Vision & Screenshot Diagnostics: Inspecting circuit/network diagrams, error logs, IPv4/router settings, code screenshots, and hardware photos with pin-point root-cause identification.
+
+RESPONSE STYLE:
+- Deliver crisp, structured, technically accurate, and immediately actionable answers.
+- Avoid generic fluff or vague disclaimers. Pinpoint exact root causes, commands, parameters, or fixes first.
+- Respond in the user's preferred language (English, Hindi, or Hinglish) naturally while keeping technical terms precise."""
+
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS user_chats (
-            email TEXT,
-            session_id TEXT,
-            title TEXT,
-            messages TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (email, session_id)
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            email TEXT NOT NULL,
+            id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            messages TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (email, id)
         )
-    ''')
-    c.execute('''
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS shared_chats (
             share_id TEXT PRIMARY KEY,
-            title TEXT,
-            messages TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            title TEXT NOT NULL,
+            messages TEXT NOT NULL,
+            created_at TEXT NOT NULL
         )
-    ''')
-    c.execute('''
+    """)
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS agent_tasks (
             task_id TEXT PRIMARY KEY,
-            command TEXT,
-            status TEXT,
-            result TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            goal TEXT NOT NULL,
+            status TEXT NOT NULL,
+            next_action TEXT,
+            last_result TEXT,
+            updated_at TEXT NOT NULL
         )
-    ''')
+    """)
     conn.commit()
     conn.close()
 
@@ -87,32 +93,52 @@ def generate_with_fallback(contents, system_instruction=XAVIAN_SYSTEM_PROMPT):
             api_key=api_key,
             http_options=types.HttpOptions(api_version="v1beta"),
         )
-        for m_name in CANDIDATE_MODELS:
+        for model_name in MODELS:
             try:
                 response = client.models.generate_content(
-                    model=m_name,
+                    model=model_name,
                     contents=contents,
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
+                        temperature=0.4,
                     ),
                 )
-                return response.text
-            except Exception as err:
-                last_error = err
-                err_str = str(err)
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "quota" in err_str.lower():
-                    continue
-                raise err
-    raise RuntimeError(f"All free-tier quotas exhausted temporarily: {last_error}")
+                if response and response.text:
+                    return response.text.strip()
+            except Exception as e:
+                last_error = e
+                continue
+
+    raise RuntimeError(f"All Gemini models/keys failed: {last_error}")
+
+
+def parse_history(history_list):
+    contents = []
+    if not isinstance(history_list, list):
+        return contents
+    for msg in history_list[-20:]:
+        if not isinstance(msg, dict):
+            continue
+        text = str(msg.get("text", "")).strip()
+        if not text:
+            continue
+        role = "user" if msg.get("isUser") else "model"
+        contents.append(
+            types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=text)],
+            )
+        )
+    return contents
 
 
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({
-        "status": "Xavian Core Online",
-        "version": "3.2-Resilient-Vision",
-        "keys_loaded": len(API_KEYS),
-        "models": CANDIDATE_MODELS
+        "status": "online",
+        "service": "Xavian Cloud Brain",
+        "version": "3.3-multi-attachment",
+        "models": MODELS,
     })
 
 
@@ -120,63 +146,47 @@ def health():
 def ask():
     try:
         prompt = ""
-        history = []
-        file_part = None
+        history_list = []
+        file_parts = []
 
         if request.content_type and "multipart/form-data" in request.content_type:
-            prompt = request.form.get("prompt", "").strip()
-            history_raw = request.form.get("history", "[]")
-            try:
-                history = json.loads(history_raw)
-            except Exception:
-                history = []
+            prompt = (request.form.get("prompt") or "").strip()
+            raw_history = request.form.get("history")
+            if raw_history:
+                try:
+                    history_list = json.loads(raw_history)
+                except Exception:
+                    history_list = []
 
-            if "file" in request.files:
-                uploaded = request.files["file"]
+            uploaded_list = request.files.getlist("files")
+            if not uploaded_list and "file" in request.files:
+                uploaded_list = [request.files["file"]]
+
+            for uploaded in uploaded_list:
                 file_bytes = uploaded.read()
                 mime_type = uploaded.mimetype or ""
                 if not mime_type or mime_type == "application/octet-stream":
                     guessed_type, _ = mimetypes.guess_type(uploaded.filename or "")
                     mime_type = guessed_type or "text/plain"
                 if file_bytes:
-                    file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+                    file_parts.append(
+                        types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+                    )
         else:
             data = request.get_json(silent=True) or {}
-            prompt = data.get("prompt", "").strip()
-            history = data.get("history", [])
+            prompt = (data.get("prompt") or data.get("message") or "").strip()
+            history_list = data.get("history") or []
 
-        if not prompt and not file_part:
+        if not prompt and not file_parts:
             return jsonify({"reply": "Please provide a prompt or attach a file."}), 400
 
-        lower_p = prompt.lower()
-        if lower_p.startswith("/pc ") or lower_p.startswith("pc:"):
-            clean_cmd = prompt.split(" ", 1)[1].strip() if " " in prompt else prompt[3:].strip()
-            task_id = uuid.uuid4().hex[:8]
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            c.execute(
-                "INSERT INTO agent_tasks (task_id, command, status, result) VALUES (?, ?, 'pending', '')",
-                (task_id, clean_cmd)
-            )
-            conn.commit()
-            conn.close()
-            return jsonify({
-                "reply": f"Desktop Agent ko command bhej di gayi hai (Task `{task_id}`):\n> **{clean_cmd}**\n\nAapke laptop par `xavian_agent.py` isko turant execute karega."
-            })
-
-        contents = []
-        for msg in history[-12:]:
-            role = "user" if msg.get("isUser") else "model"
-            text = msg.get("text", "").strip()
-            if text:
-                contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
-
-        current_parts = []
-        if file_part:
-            current_parts.append(file_part)
+        contents = parse_history(history_list)
+        current_parts = list(file_parts)
         current_parts.append(
             types.Part.from_text(
-                text=prompt if prompt else "Analyze this file in detail and highlight any issues or key findings."
+                text=prompt
+                if prompt
+                else "Analyze these attached files in detail and highlight any issues or key findings."
             )
         )
         contents.append(types.Content(role="user", parts=current_parts))
@@ -185,156 +195,211 @@ def ask():
         return jsonify({"reply": reply_text})
 
     except Exception as e:
-        return jsonify({"reply": f"Xavian Notice: {str(e)}"}), 500
-
-
-@app.route("/agent/poll", methods=["GET"])
-def agent_poll():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT task_id, command FROM agent_tasks WHERE status = 'pending' ORDER BY created_at ASC LIMIT 1")
-    row = c.fetchone()
-    if row:
-        c.execute("UPDATE agent_tasks SET status = 'running' WHERE task_id = ?", (row[0],))
-        conn.commit()
-        conn.close()
-        return jsonify({"has_task": True, "task_id": row[0], "command": row[1]})
-    conn.close()
-    return jsonify({"has_task": False})
-
-
-@app.route("/agent/plan_step", methods=["POST"])
-def agent_plan_step():
-    try:
-        goal = request.form.get("goal", "")
-        step_history = request.form.get("step_history", "[]")
-        screen_w = int(request.form.get("width", 1920))
-        screen_h = int(request.form.get("height", 1080))
-
-        if "screenshot" not in request.files:
-            return jsonify({"action": "done", "reason": "No screenshot received"}), 400
-
-        img_bytes = request.files["screenshot"].read()
-        planner_prompt = f"""
-You are Xavian's Windows GUI Automation Controller. Screen resolution is {screen_w}x{screen_h}.
-User Goal: "{goal}"
-Previous steps taken: {step_history}
-
-Analyze the attached screenshot carefully and decide the NEXT SINGLE atomic mouse/keyboard action to achieve the goal.
-Return ONLY valid JSON (no markdown, no explanation) using one of these exact schemas:
-1. {{"action": "click", "x": 500, "y": 300, "button": "left", "clicks": 1, "reason": "Click target"}}
-2. {{"action": "type", "text": "anydesk", "press_enter": true, "reason": "Type text"}}
-3. {{"action": "hotkey", "keys": ["win", "r"], "reason": "Press shortcut"}}
-4. {{"action": "scroll", "amount": -500, "reason": "Scroll"}}
-5. {{"action": "wait", "seconds": 2, "reason": "Wait"}}
-6. {{"action": "done", "reason": "Goal completed"}}
-"""
-        contents = [
-            types.Part.from_bytes(data=img_bytes, mime_type="image/png"),
-            types.Part.from_text(text=planner_prompt)
-        ]
-        raw = generate_with_fallback(
-            contents,
-            system_instruction="You are a precise Windows GUI automation planner. Output valid JSON only."
-        )
-        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        return jsonify(json.loads(raw))
-    except Exception as e:
-        return jsonify({"action": "done", "reason": f"Planner error: {str(e)}"})
-
-
-@app.route("/agent/complete", methods=["POST"])
-def agent_complete():
-    data = request.get_json(silent=True) or {}
-    task_id = data.get("task_id", "")
-    result = data.get("result", "Completed")
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("UPDATE agent_tasks SET status = 'done', result = ? WHERE task_id = ?", (result, task_id))
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "ok"})
-
-
-@app.route("/save_chat", methods=["POST"])
-def save_chat():
-    data = request.get_json(silent=True) or {}
-    email = data.get("email", "").strip().lower()
-    session_id = data.get("id", "")
-    title = data.get("title", "New Chat")
-    messages = json.dumps(data.get("messages", []))
-    if not email or not session_id:
-        return jsonify({"error": "Missing email or session id"}), 400
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        'INSERT OR REPLACE INTO user_chats (email, session_id, title, messages, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-        (email, session_id, title, messages)
-    )
-    conn.commit()
-    conn.close()
-    return jsonify({"status": "saved"})
+        return jsonify({"reply": f"Xavian Backend Error: {str(e)}"}), 500
 
 
 @app.route("/get_chats", methods=["POST"])
 def get_chats():
     data = request.get_json(silent=True) or {}
-    email = data.get("email", "").strip().lower()
+    email = (data.get("email") or "").strip().lower()
     if not email:
         return jsonify({"sessions": []})
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT session_id, title, messages FROM user_chats WHERE email = ? ORDER BY updated_at DESC', (email,))
-    rows = c.fetchall()
+
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, title, messages FROM chat_sessions WHERE email = ? ORDER BY updated_at DESC",
+        (email,),
+    ).fetchall()
     conn.close()
-    sessions = [{"id": r[0], "title": r[1], "messages": json.loads(r[2] or "[]")} for r in rows]
+
+    sessions = []
+    for r in rows:
+        try:
+            msgs = json.loads(r["messages"])
+        except Exception:
+            msgs = []
+        sessions.append({
+            "id": r["id"],
+            "title": r["title"],
+            "messages": msgs,
+        })
     return jsonify({"sessions": sessions})
+
+
+@app.route("/save_chat", methods=["POST"])
+def save_chat():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    session_id = str(data.get("id") or "").strip()
+    title = str(data.get("title") or "New Chat").strip()
+    messages = data.get("messages") or []
+
+    if not email or not session_id:
+        return jsonify({"ok": False, "error": "Missing email or session id"}), 400
+
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO chat_sessions (email, id, title, messages, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(email, id) DO UPDATE SET
+            title = excluded.title,
+            messages = excluded.messages,
+            updated_at = excluded.updated_at
+        """,
+        (email, session_id, title, json.dumps(messages), datetime.utcnow().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
 
 
 @app.route("/delete_chat", methods=["POST"])
 def delete_chat():
     data = request.get_json(silent=True) or {}
-    email = data.get("email", "").strip().lower()
-    session_id = data.get("id", "")
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('DELETE FROM user_chats WHERE email = ? AND session_id = ?', (email, session_id))
+    email = (data.get("email") or "").strip().lower()
+    session_id = str(data.get("id") or "").strip()
+
+    if not email or not session_id:
+        return jsonify({"ok": False}), 400
+
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM chat_sessions WHERE email = ? AND id = ?",
+        (email, session_id),
+    )
     conn.commit()
     conn.close()
-    return jsonify({"status": "deleted"})
+    return jsonify({"ok": True})
 
 
 @app.route("/share_chat", methods=["POST"])
 def share_chat():
     data = request.get_json(silent=True) or {}
-    title = data.get("title", "Shared Conversation")
-    messages = json.dumps(data.get("messages", []))
+    title = str(data.get("title") or "Shared Xavian Chat").strip()
+    messages = data.get("messages") or []
+
     share_id = uuid.uuid4().hex[:10]
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('INSERT INTO shared_chats (share_id, title, messages) VALUES (?, ?, ?)', (share_id, title, messages))
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO shared_chats (share_id, title, messages, created_at) VALUES (?, ?, ?, ?)",
+        (share_id, title, json.dumps(messages), datetime.utcnow().isoformat()),
+    )
     conn.commit()
     conn.close()
-    return jsonify({"share_url": f"{request.host_url.rstrip('/')}/shared/{share_id}"})
+
+    base_url = request.host_url.rstrip("/")
+    return jsonify({"share_id": share_id, "share_url": f"{base_url}/shared/{share_id}"})
 
 
 @app.route("/shared/<share_id>", methods=["GET"])
-def view_shared(share_id):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('SELECT title, messages FROM shared_chats WHERE share_id = ?', (share_id,))
-    row = c.fetchone()
+def view_shared_chat(share_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT title, messages, created_at FROM shared_chats WHERE share_id = ?",
+        (share_id,),
+    ).fetchone()
     conn.close()
+
     if not row:
         return "Shared chat not found.", 404
+
+    messages = json.loads(row["messages"])
     html = """
-    <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ title }} - Xavian</title>
-    <style>body{background:#0f111a;color:#e8eaed;font-family:sans-serif;max-width:760px;margin:0 auto;padding:24px}.msg{padding:14px 18px;border-radius:16px;margin-bottom:14px;line-height:1.5;white-space:pre-wrap}.user{background:#1f2b47;margin-left:15%}.ai{background:#181a27;border:1px solid #2a2d3d}</style>
-    </head><body><h2>{{ title }}</h2>{% for m in messages %}<div class="msg {{ 'user' if m.isUser else 'ai' }}">{{ m.text }}</div>{% endfor %}</body></html>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>{{ title }} - Xavian</title>
+      <style>
+        body { background:#0F111A; color:#F1F1FA; font-family:system-ui,sans-serif; max-width:760px; margin:0 auto; padding:20px; }
+        h2 { color:#8AB4F8; }
+        .msg { padding:14px 16px; border-radius:16px; margin-bottom:14px; line-height:1.5; white-space:pre-wrap; }
+        .user { background:#1E2B47; margin-left:40px; }
+        .bot { background:#181A27; border:1px solid #2C2D42; }
+      </style>
+    </head>
+    <body>
+      <h2>{{ title }}</h2>
+      {% for m in messages %}
+        <div class="msg {{ 'user' if m.isUser else 'bot' }}"><strong>{{ 'You' if m.isUser else 'Xavian' }}:</strong>\n{{ m.text }}</div>
+      {% endfor %}
+    </body>
+    </html>
     """
-    return render_template_string(html, title=row[0], messages=json.loads(row[1]))
+    return render_template_string(html, title=row["title"], messages=messages)
+
+
+@app.route("/agent/create_task", methods=["POST"])
+def agent_create_task():
+    data = request.get_json(silent=True) or {}
+    goal = (data.get("goal") or "").strip()
+    if not goal:
+        return jsonify({"error": "Goal is required"}), 400
+
+    task_id = uuid.uuid4().hex[:12]
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO agent_tasks (task_id, goal, status, next_action, last_result, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (task_id, goal, "pending", None, None, datetime.utcnow().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"task_id": task_id, "status": "pending"})
+
+
+@app.route("/agent/poll", methods=["GET"])
+def agent_poll():
+    conn = get_db()
+    row = conn.execute(
+        "SELECT task_id, goal, status FROM agent_tasks WHERE status = 'pending' ORDER BY updated_at ASC LIMIT 1"
+    ).fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"task": None})
+    return jsonify({
+        "task": {
+            "task_id": row["task_id"],
+            "goal": row["goal"],
+            "status": row["status"],
+        }
+    })
+
+
+@app.route("/agent/plan_step", methods=["POST"])
+def agent_plan_step():
+    try:
+        goal = (request.form.get("goal") or "").strip()
+        history_notes = (request.form.get("history") or "").strip()
+        screenshot = request.files.get("screenshot")
+
+        parts = []
+        if screenshot:
+            img_bytes = screenshot.read()
+            if img_bytes:
+                parts.append(
+                    types.Part.from_bytes(data=img_bytes, mime_type="image/png")
+                )
+
+        planner_prompt = f"""You are Xavian Desktop GUI Agent Planner.
+Goal: {goal}
+Previous Steps: {history_notes}
+
+Analyze the current screen and return ONLY a valid JSON object with the next single GUI action:
+{{"action": "click|double_click|type|press|hotkey|wait|done", "x": 0, "y": 0, "text": "", "keys": [], "reason": ""}}"""
+
+        parts.append(types.Part.from_text(text=planner_prompt))
+        raw = generate_with_fallback(
+            [types.Content(role="user", parts=parts)],
+            system_instruction="Return strictly valid JSON for Windows GUI automation. No markdown fences.",
+        )
+        cleaned = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        return jsonify(json.loads(cleaned))
+    except Exception as e:
+        return jsonify({"action": "wait", "reason": f"Planner error: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
