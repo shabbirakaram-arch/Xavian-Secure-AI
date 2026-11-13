@@ -2,6 +2,7 @@ import os
 import json
 import sqlite3
 import uuid
+import mimetypes
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 from google import genai
@@ -12,7 +13,6 @@ CORS(app)
 
 DB_PATH = "xavian.db"
 
-# Collect all configured Gemini API keys from Render Environment Variables
 API_KEYS = [
     k.strip() for k in [
         os.environ.get("GEMINI_API_KEY", ""),
@@ -38,6 +38,7 @@ CORE EXPERTISE:
 5. Elevator & Hardware Engineering: Complete technical mastery over elevator commissioning, testing, fault diagnostics (Mitsubishi, OTIS, Monarch/Inovance, VFGLC), CCTV/NVR, and biometric systems.
 6. Vision & Screenshot Analysis: When given a screenshot, firewall UI, terminal log, or document, identify exact UI elements, error codes, security misconfigurations, and provide immediate actionable fixes.
 """
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -72,10 +73,11 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 init_db()
 
+
 def generate_with_fallback(contents, system_instruction=XAVIAN_SYSTEM_PROMPT):
-    """Automatically rotates across available API keys and models on 429 quota limits."""
     if not API_KEYS:
         raise RuntimeError("No GEMINI_API_KEY configured on Render.")
 
@@ -100,14 +102,16 @@ def generate_with_fallback(contents, system_instruction=XAVIAN_SYSTEM_PROMPT):
                 raise err
     raise RuntimeError(f"All free-tier quotas exhausted temporarily: {last_error}")
 
+
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({
         "status": "Xavian Core Online",
-        "version": "3.1-Resilient",
+        "version": "3.2-Resilient-Vision",
         "keys_loaded": len(API_KEYS),
         "models": CANDIDATE_MODELS
     })
+
 
 @app.route("/ask", methods=["POST"])
 def ask():
@@ -122,7 +126,9 @@ def ask():
             try:
                 history = json.loads(history_raw)
             except Exception:
-                history = []if "file" in request.files:
+                history = []
+
+            if "file" in request.files:
                 uploaded = request.files["file"]
                 file_bytes = uploaded.read()
                 mime_type = uploaded.mimetype or ""
@@ -145,12 +151,16 @@ def ask():
             task_id = uuid.uuid4().hex[:8]
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            c.execute("INSERT INTO agent_tasks (task_id, command, status, result) VALUES (?, ?, 'pending', '')", (task_id, clean_cmd))
+            c.execute(
+                "INSERT INTO agent_tasks (task_id, command, status, result) VALUES (?, ?, 'pending', '')",
+                (task_id, clean_cmd)
+            )
             conn.commit()
             conn.close()
-            return jsonify({"reply": f"Desktop Agent ko command bhej di gayi hai (Task `{task_id}`):\n> **{clean_cmd}**\n\nAapke laptop par `xavian_agent.py` isko turant execute karega."})
+            return jsonify({
+                "reply": f"Desktop Agent ko command bhej di gayi hai (Task `{task_id}`):\n> **{clean_cmd}**\n\nAapke laptop par `xavian_agent.py` isko turant execute karega."
+            })
 
-        # Build multi-turn contents list for google-genai SDK
         contents = []
         for msg in history[-12:]:
             role = "user" if msg.get("isUser") else "model"
@@ -161,7 +171,11 @@ def ask():
         current_parts = []
         if file_part:
             current_parts.append(file_part)
-        current_parts.append(types.Part.from_text(text=prompt if prompt else "Analyze this file in detail and highlight any issues or key findings."))
+        current_parts.append(
+            types.Part.from_text(
+                text=prompt if prompt else "Analyze this file in detail and highlight any issues or key findings."
+            )
+        )
         contents.append(types.Content(role="user", parts=current_parts))
 
         reply_text = generate_with_fallback(contents)
@@ -170,7 +184,6 @@ def ask():
     except Exception as e:
         return jsonify({"reply": f"Xavian Notice: {str(e)}"}), 500
 
-# --- DESKTOP AGENT ENDPOINTS ---
 
 @app.route("/agent/poll", methods=["GET"])
 def agent_poll():
@@ -185,6 +198,7 @@ def agent_poll():
         return jsonify({"has_task": True, "task_id": row[0], "command": row[1]})
     conn.close()
     return jsonify({"has_task": False})
+
 
 @app.route("/agent/plan_step", methods=["POST"])
 def agent_plan_step():
@@ -225,6 +239,7 @@ Return ONLY valid JSON (no markdown, no explanation) using one of these exact sc
     except Exception as e:
         return jsonify({"action": "done", "reason": f"Planner error: {str(e)}"})
 
+
 @app.route("/agent/complete", methods=["POST"])
 def agent_complete():
     data = request.get_json(silent=True) or {}
@@ -237,7 +252,6 @@ def agent_complete():
     conn.close()
     return jsonify({"status": "ok"})
 
-# --- CHAT HISTORY & SHARING ENDPOINTS ---
 
 @app.route("/save_chat", methods=["POST"])
 def save_chat():
@@ -250,10 +264,14 @@ def save_chat():
         return jsonify({"error": "Missing email or session id"}), 400
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('INSERT OR REPLACE INTO user_chats (email, session_id, title, messages, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)', (email, session_id, title, messages))
+    c.execute(
+        'INSERT OR REPLACE INTO user_chats (email, session_id, title, messages, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+        (email, session_id, title, messages)
+    )
     conn.commit()
     conn.close()
     return jsonify({"status": "saved"})
+
 
 @app.route("/get_chats", methods=["POST"])
 def get_chats():
@@ -269,6 +287,7 @@ def get_chats():
     sessions = [{"id": r[0], "title": r[1], "messages": json.loads(r[2] or "[]")} for r in rows]
     return jsonify({"sessions": sessions})
 
+
 @app.route("/delete_chat", methods=["POST"])
 def delete_chat():
     data = request.get_json(silent=True) or {}
@@ -280,6 +299,7 @@ def delete_chat():
     conn.commit()
     conn.close()
     return jsonify({"status": "deleted"})
+
 
 @app.route("/share_chat", methods=["POST"])
 def share_chat():
@@ -293,6 +313,7 @@ def share_chat():
     conn.commit()
     conn.close()
     return jsonify({"share_url": f"{request.host_url.rstrip('/')}/shared/{share_id}"})
+
 
 @app.route("/shared/<share_id>", methods=["GET"])
 def view_shared(share_id):
@@ -309,6 +330,7 @@ def view_shared(share_id):
     </head><body><h2>{{ title }}</h2>{% for m in messages %}<div class="msg {{ 'user' if m.isUser else 'ai' }}">{{ m.text }}</div>{% endfor %}</body></html>
     """
     return render_template_string(html, title=row[0], messages=json.loads(row[1]))
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
