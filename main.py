@@ -20,7 +20,7 @@ API_KEYS = [k.strip() for k in RAW_KEYS.split(",") if k.strip()]
 MODELS = [
     "gemini-2.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-2.0-flash",
+    "gemini-3.8-flash",
 ]
 
 XAVIAN_SYSTEM_PROMPT = """You are Xavian, an authoritative, razor-sharp, multi-domain Technical, Tactical, Academic, and Desktop Automation Assistant (modeled after EDITH).
