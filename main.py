@@ -4,7 +4,8 @@ import sqlite3
 import uuid
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 app = Flask(__name__)
 CORS(app)
@@ -73,22 +74,24 @@ def init_db():
 
 init_db()
 
-def generate_with_fallback(formatted_history, current_parts, system_instruction=XAVIAN_SYSTEM_PROMPT):
+def generate_with_fallback(contents, system_instruction=XAVIAN_SYSTEM_PROMPT):
     """Automatically rotates across available API keys and models on 429 quota limits."""
     if not API_KEYS:
         raise RuntimeError("No GEMINI_API_KEY configured on Render.")
 
     last_error = None
     for api_key in API_KEYS:
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
         for m_name in CANDIDATE_MODELS:
             try:
-                model = genai.GenerativeModel(
-                    model_name=m_name,
-                    system_instruction=system_instruction
+                response = client.models.generate_content(
+                    model=m_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                    ),
                 )
-                chat = model.start_chat(history=formatted_history)
-                return chat.send_message(current_parts)
+                return response.text
             except Exception as err:
                 last_error = err
                 err_str = str(err)
@@ -126,7 +129,7 @@ def ask():
                 file_bytes = uploaded.read()
                 mime_type = uploaded.mimetype or "application/octet-stream"
                 if file_bytes:
-                    file_part = {"mime_type": mime_type, "data": file_bytes}
+                    file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
         else:
             data = request.get_json(silent=True) or {}
             prompt = data.get("prompt", "").strip()
@@ -146,20 +149,22 @@ def ask():
             conn.close()
             return jsonify({"reply": f"Desktop Agent ko command bhej di gayi hai (Task `{task_id}`):\n> **{clean_cmd}**\n\nAapke laptop par `xavian_agent.py` isko turant execute karega."})
 
-        formatted_history = []
+        # Build multi-turn contents list for google-genai SDK
+        contents = []
         for msg in history[-12:]:
             role = "user" if msg.get("isUser") else "model"
             text = msg.get("text", "").strip()
             if text:
-                formatted_history.append({"role": role, "parts": [text]})
+                contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
 
         current_parts = []
         if file_part:
             current_parts.append(file_part)
-        current_parts.append(prompt if prompt else "Analyze this file in detail and highlight any issues or key findings.")
+        current_parts.append(types.Part.from_text(text=prompt if prompt else "Analyze this file in detail and highlight any issues or key findings."))
+        contents.append(types.Content(role="user", parts=current_parts))
 
-        response = generate_with_fallback(formatted_history, current_parts)
-        return jsonify({"reply": response.text})
+        reply_text = generate_with_fallback(contents)
+        return jsonify({"reply": reply_text})
 
     except Exception as e:
         return jsonify({"reply": f"Xavian Notice: {str(e)}"}), 500
@@ -206,12 +211,15 @@ Return ONLY valid JSON (no markdown, no explanation) using one of these exact sc
 5. {{"action": "wait", "seconds": 2, "reason": "Wait"}}
 6. {{"action": "done", "reason": "Goal completed"}}
 """
-        res = generate_with_fallback(
-            [],
-            [{"mime_type": "image/png", "data": img_bytes}, planner_prompt],
+        contents = [
+            types.Part.from_bytes(data=img_bytes, mime_type="image/png"),
+            types.Part.from_text(text=planner_prompt)
+        ]
+        raw = generate_with_fallback(
+            contents,
             system_instruction="You are a precise Windows GUI automation planner. Output valid JSON only."
         )
-        raw = res.text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         return jsonify(json.loads(raw))
     except Exception as e:
         return jsonify({"action": "done", "reason": f"Planner error: {str(e)}"})
