@@ -83,7 +83,10 @@ def generate_with_fallback(contents, system_instruction=XAVIAN_SYSTEM_PROMPT):
 
     last_error = None
     for api_key in API_KEYS:
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(api_version="v1beta"),
+        )
         for m_name in CANDIDATE_MODELS:
             try:
                 response = client.models.generate_content(
