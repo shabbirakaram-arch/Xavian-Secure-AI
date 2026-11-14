@@ -1,1 +1,35 @@
-
+{
+  "id": "india_school_boards",
+  "country": "India",
+  "flag": "🇮🇳",
+  "title": "Indian School Boards (9th – 12th)",
+  "subtitle": "CBSE & UP Board • Complete NCERT & State Syllabus",
+  "badge": "LIVE CLASSES",
+  "color": "#8AB4F8",
+  "boards": [
+    {
+      "id": "cbse",
+      "name": "CBSE Board",
+      "mediums": ["English", "Hinglish"],
+      "classes": ["Class 9", "Class 10", "Class 11", "Class 12"],
+      "subjects": {
+        "Class 9": ["Mathematics", "Science (Physics, Chemistry, Bio)", "Social Science", "English", "Artificial Intelligence"],
+        "Class 10": ["Mathematics", "Science (Physics, Chemistry, Bio)", "Social Science", "English", "Information Technology"],
+        "Class 11": ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science (Python)", "Accountancy", "Economics"],
+        "Class 12": ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science (Python)", "Accountancy", "Economics"]
+      }
+    },
+    {
+      "id": "up_board",
+      "name": "UP Board (UPMSP)",
+      "mediums": ["Hindi / Hinglish", "English"],
+      "classes": ["Class 9", "Class 10", "Class 11", "Class 12"],
+      "subjects": {
+        "Class 9": ["Ganit (Mathematics)", "Vigyan (Science)", "Samajik Vigyan", "English", "Computer"],
+        "Class 10": ["Ganit (Mathematics)", "Vigyan (Science)", "Samajik Vigyan", "English", "Computer"],
+        "Class 11": ["Bhautik Vigyan (Physics)", "Rasayan Vigyan (Chemistry)", "Ganit (Maths)", "Jeev Vigyan (Biology)", "English"],
+        "Class 12": ["Bhautik Vigyan (Physics)", "Rasayan Vigyan (Chemistry)", "Ganit (Maths)", "Jeev Vigyan (Biology)", "English"]
+      }
+    }
+  ]
+}
