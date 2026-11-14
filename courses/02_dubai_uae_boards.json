@@ -1,1 +1,59 @@
-
+{
+  "id": "dubai_uae_boards",
+  "country": "Dubai / UAE",
+  "flag": "🇦🇪",
+  "title": "Dubai & UAE Curriculums",
+  "subtitle": "MOE, CBSE Gulf, British (IGCSE/A-Level) & IB",
+  "badge": "UAE & GULF",
+  "color": "#81C995",
+  "boards": [
+    {
+      "id": "uae_moe",
+      "name": "UAE Ministry of Education (MOE)",
+      "mediums": ["English", "Arabic / English"],
+      "classes": ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
+      "subjects": {
+        "Grade 9": ["Mathematics", "Integrated Science", "UAE Social Studies", "English", "Computer Science"],
+        "Grade 10": ["Mathematics", "Physics", "Chemistry", "Biology", "UAE Social Studies", "English"],
+        "Grade 11": ["Advanced Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Business Studies"],
+        "Grade 12": ["Advanced Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Business Studies"]
+      }
+    },
+    {
+      "id": "cbse_gulf",
+      "name": "CBSE Gulf (Dubai / UAE)",
+      "mediums": ["English", "Hinglish"],
+      "classes": ["Grade 9", "Grade 10", "Grade 11", "Grade 12"],
+      "subjects": {
+        "Grade 9": ["Mathematics", "Science", "Social Science", "English", "Artificial Intelligence"],
+        "Grade 10": ["Mathematics", "Science", "Social Science", "English", "Information Technology"],
+        "Grade 11": ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "Accountancy", "Economics"],
+        "Grade 12": ["Physics", "Chemistry", "Mathematics", "Biology", "Computer Science", "Accountancy", "Economics"]
+      }
+    },
+    {
+      "id": "british_igcse",
+      "name": "British Curriculum (Cambridge / Edexcel)",
+      "mediums": ["English"],
+      "classes": ["Year 10 (IGCSE)", "Year 11 (IGCSE)", "Year 12 (AS-Level)", "Year 13 (A2-Level)"],
+      "subjects": {
+        "Year 10 (IGCSE)": ["Mathematics (0580)", "Physics (0625)", "Chemistry (0620)", "Biology (0610)", "Computer Science (0478)", "Economics (0455)"],
+        "Year 11 (IGCSE)": ["Mathematics (0580)", "Physics (0625)", "Chemistry (0620)", "Biology (0610)", "Computer Science (0478)", "Business Studies"],
+        "Year 12 (AS-Level)": ["Pure Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Economics"],
+        "Year 13 (A2-Level)": ["Pure & Further Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Economics"]
+      }
+    },
+    {
+      "id": "ib_dubai",
+      "name": "IB (International Baccalaureate)",
+      "mediums": ["English"],
+      "classes": ["MYP Year 4", "MYP Year 5", "IB DP Year 1", "IB DP Year 2"],
+      "subjects": {
+        "MYP Year 4": ["Mathematics", "Sciences", "Individuals & Societies", "Design & Coding"],
+        "MYP Year 5": ["Extended Mathematics", "Physics", "Chemistry", "Biology", "Digital Design"],
+        "IB DP Year 1": ["Math AA / AI (HL/SL)", "Physics (HL/SL)", "Chemistry (HL/SL)", "Biology (HL/SL)", "Computer Science"],
+        "IB DP Year 2": ["Math AA / AI (HL/SL)", "Physics (HL/SL)", "Chemistry (HL/SL)", "Biology (HL/SL)", "Computer Science"]
+      }
+    }
+  ]
+}
